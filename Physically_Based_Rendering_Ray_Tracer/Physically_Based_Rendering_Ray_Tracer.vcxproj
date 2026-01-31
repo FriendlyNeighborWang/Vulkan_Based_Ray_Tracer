@@ -1,0 +1,224 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{d8d3c6df-82b0-4123-83e7-c8a970855bea}</ProjectGuid>
+    <RootNamespace>PhysicallyBasedRenderingRayTracer</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\include;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\glm\glm;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\build\include;E:\VulkanSDK\1.4.321.1\Include;D:\C++Libiary\glfw-3.4.bin.WIN64\include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\build\lib\Release;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\glm\lib;D:\C++Libiary\glfw-3.4.bin.WIN64\lib-vc2022;E:\VulkanSDK\1.4.321.1\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;glm.lib;glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="base\base.h" />
+    <ClInclude Include="base\shader_base.h" />
+    <ClInclude Include="deps\stb\stb_image_write.h" />
+    <ClInclude Include="deps\tlsf\tlsf.h" />
+    <ClInclude Include="graphics\Mesh.h" />
+    <ClInclude Include="graphics\Renderer.h" />
+    <ClInclude Include="graphics\SceneLoader.h" />
+    <ClInclude Include="graphics\Window.h" />
+    <CustomBuild Include="shader\closestHitCommon.glslh" />
+    <ClInclude Include="shader\shaderCommon.glslh" />
+    <ClInclude Include="util\FileOp.h" />
+    <ClInclude Include="util\log.h" />
+    <ClInclude Include="util\math.h" />
+    <ClInclude Include="util\memory.h" />
+    <ClInclude Include="util\pstd.h" />
+    <ClInclude Include="util\tagged_ptr.h" />
+    <ClInclude Include="util\Threadsafe_queue.h" />
+    <ClInclude Include="util\Timer.h" />
+    <ClInclude Include="util\Vec.h" />
+    <ClInclude Include="vk_layer\ASManager.h" />
+    <ClInclude Include="vk_layer\Buffer.h" />
+    <ClInclude Include="vk_layer\CommandPool.h" />
+    <ClInclude Include="vk_layer\ComputePipeline.h" />
+    <ClInclude Include="vk_layer\Context.h" />
+    <ClInclude Include="vk_layer\DescriptorManager.h" />
+    <ClInclude Include="vk_layer\Image.h" />
+    <ClInclude Include="vk_layer\RTPipeline.h" />
+    <ClInclude Include="vk_layer\ShaderManager.h" />
+    <ClInclude Include="vk_layer\SwapChain.h" />
+    <ClInclude Include="vk_layer\SyncObject.h" />
+    <ClInclude Include="vk_layer\VkMemoryAllocator.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="deps\tlsf\tlsf.c" />
+    <ClCompile Include="graphics\Mesh.cpp" />
+    <ClCompile Include="graphics\Renderer.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="test\util_log_test.cpp" />
+    <ClCompile Include="test\util_memory_test.cpp" />
+    <ClCompile Include="test\util_pstd_test.cpp" />
+    <ClCompile Include="vk_layer\ASManager.cpp" />
+    <ClCompile Include="vk_layer\Buffer.cpp" />
+    <ClCompile Include="vk_layer\CommandPool.cpp" />
+    <ClCompile Include="vk_layer\ComputePipeline.cpp" />
+    <ClCompile Include="vk_layer\Context.cpp" />
+    <ClCompile Include="vk_layer\DescriptorManager.cpp" />
+    <ClCompile Include="vk_layer\Image.cpp" />
+    <ClCompile Include="vk_layer\RTPipeline.cpp" />
+    <ClCompile Include="vk_layer\ShaderManager.cpp" />
+    <ClCompile Include="vk_layer\SwapChain.cpp" />
+    <ClCompile Include="vk_layer\SyncObject.cpp" />
+    <ClCompile Include="vk_layer\VkMemoryAllocator.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shader\material_diffuse.rchit">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+    <CustomBuild Include="shader\raytrace.rgen">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+    <CustomBuild Include="shader\raytrace.rmiss">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+    <CustomBuild Include="shader\format_trans.comp">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+    <None Include="resource\cornell_box\scene.gltf" />
+    <None Include="util\Vec.inl" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

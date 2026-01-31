@@ -1,0 +1,215 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="base">
+      <UniqueIdentifier>{8f70246d-37b7-43b2-a24a-fd35548d7d37}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util">
+      <UniqueIdentifier>{28c62f26-409a-43a7-acc6-c1405c5250ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="deps">
+      <UniqueIdentifier>{2565adb3-c753-4661-a995-d8841ba816c7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="deps\tlsf">
+      <UniqueIdentifier>{c1dc4bcb-52c2-4946-995f-58685b3abbce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="test">
+      <UniqueIdentifier>{ec8799bd-d480-40cd-9ba3-d65f06cbc6ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="graphics">
+      <UniqueIdentifier>{00d09d40-441d-4ba6-a286-d18366226116}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resource">
+      <UniqueIdentifier>{375db5d5-e587-42f5-a442-322c19dd1979}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vk_layer">
+      <UniqueIdentifier>{aa7f1595-476c-4941-a0a3-2648a3cced5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader">
+      <UniqueIdentifier>{f747eba1-0ba5-44d7-81ce-137016df88d4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader\include">
+      <UniqueIdentifier>{248fc4cc-b817-4bba-8836-52c27770d27d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="deps\stb">
+      <UniqueIdentifier>{a0e055db-f165-49e7-9360-023e699cd1a4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resource\cornell box">
+      <UniqueIdentifier>{6665039d-d874-40b0-9562-6c1ff8a614b3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="util\memory.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="base\base.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="deps\tlsf\tlsf.h">
+      <Filter>deps\tlsf</Filter>
+    </ClInclude>
+    <ClInclude Include="util\math.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\log.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="util\tagged_ptr.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\Window.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="util\pstd.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\Context.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\Image.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\SwapChain.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Threadsafe_queue.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\CommandPool.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\VkMemoryAllocator.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\Buffer.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\ShaderManager.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="util\FileOp.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\DescriptorManager.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\SceneLoader.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Vec.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\Mesh.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\ASManager.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\RTPipeline.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="base\shader_base.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="shader\shaderCommon.glslh">
+      <Filter>shader\include</Filter>
+    </ClInclude>
+    <ClInclude Include="deps\stb\stb_image_write.h">
+      <Filter>deps\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\SyncObject.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\Renderer.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\ComputePipeline.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Timer.h">
+      <Filter>util</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="deps\tlsf\tlsf.c">
+      <Filter>deps\tlsf</Filter>
+    </ClCompile>
+    <ClCompile Include="test\util_memory_test.cpp">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\util_pstd_test.cpp">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="test\util_log_test.cpp">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\Context.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\Image.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\SwapChain.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="vk_layer\CommandPool.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\VkMemoryAllocator.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\Buffer.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\ShaderManager.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\DescriptorManager.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="graphics\Mesh.cpp">
+      <Filter>graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\ASManager.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\RTPipeline.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\SyncObject.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="graphics\Renderer.cpp">
+      <Filter>graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\ComputePipeline.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="util\Vec.inl">
+      <Filter>util</Filter>
+    </None>
+    <None Include="resource\cornell_box\scene.gltf">
+      <Filter>resource\cornell box</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shader\closestHitCommon.glslh">
+      <Filter>shader\include</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\material_diffuse.rchit">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\raytrace.rgen">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\raytrace.rmiss">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\format_trans.comp">
+      <Filter>shader</Filter>
+    </CustomBuild>
+  </ItemGroup>
+</Project>

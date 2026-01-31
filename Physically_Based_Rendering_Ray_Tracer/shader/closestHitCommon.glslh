@@ -1,0 +1,77 @@
+#ifndef GLSL_CLOSEST_HIT_COMMON_H
+#define GLSL_CLOSEST_HIT_COMMON_H
+
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_scalar_block_layout : require
+#include "../base/shader_base.h"
+#include "shaderCommon.glslh"
+
+hitAttributeEXT vec2 attributes;
+
+layout(binding = BINDING_VERTICES, set = 0, scalar) buffer Vertices{
+	vec3 vertices[];
+};
+
+layout(binding = BINDING_INDICES, set = 0, scalar) buffer Indices{
+	uint indices[];
+};
+
+layout(location = 0) rayPayloadInEXT PassableInfo pld;
+
+struct HitInfo{
+	vec3 objectPosition;
+	vec3 worldPosition;
+	vec3 worldNormal;
+	vec3 color;
+};
+
+HitInfo getObjectHitInfo(){
+	HitInfo result;
+
+	const int primitiveID = gl_PrimitiveID;
+
+	const uint i0 = indices[3 * primitiveID + 0];
+	const uint i1 = indices[3 * primitiveID + 1];
+	const uint i2 = indices[3 * primitiveID + 2];
+
+	const vec3 v0 = vertices[i0];
+	const vec3 v1 = vertices[i1];
+	const vec3 v2 = vertices[i2];
+
+	vec3 barycentrics = vec3(0.0, attributes.x, attributes.y);
+	barycentrics.x = 1.0 - barycentrics.y - barycentrics.z;
+
+	result.objectPosition = v0 * barycentrics.x + v1 * barycentrics.y + v2 * barycentrics.z;
+	result.worldPosition = gl_ObjectToWorldEXT * vec4(result.objectPosition, 1.0f);
+
+	const vec3 objectNormal = cross(v1 - v0, v2 - v0);
+	result.worldNormal = normalize((objectNormal * gl_WorldToObjectEXT).xyz);
+
+	const vec3 rayDirection = gl_WorldRayDirectionEXT;
+
+	result.worldNormal = faceforward(result.worldNormal, rayDirection, result.worldNormal);
+
+
+	return result;
+}
+
+vec3 offsetPositionAlongNormal(vec3 worldPosition, vec3 normal){
+	const float int_scale = 256.0f;
+	const ivec3 of_i = ivec3(int_scale * normal);
+
+	const vec3 p_i = vec3(
+		intBitsToFloat(floatBitsToInt(worldPosition.x)+((worldPosition.x < 0) ? -of_i.x : of_i.x)),
+		intBitsToFloat(floatBitsToInt(worldPosition.y)+((worldPosition.y < 0) ? -of_i.y : of_i.y)),
+		intBitsToFloat(floatBitsToInt(worldPosition.z)+((worldPosition.z < 0) ? -of_i.z : of_i.z))
+	);
+
+	const float origin = 1.0f / 32.0f;
+	const float floatScale = 1.0f / 65536.0f;
+	return vec3(
+		abs(worldPosition.x) < origin ? worldPosition.x + floatScale * normal.x : p_i.x,
+		abs(worldPosition.y) < origin ? worldPosition.y + floatScale * normal.y : p_i.y,
+		abs(worldPosition.z) < origin ? worldPosition.z + floatScale * normal.z : p_i.z
+	);
+}
+
+#endif // !GLSL_CLOSEST_HIT_COMMON_H
