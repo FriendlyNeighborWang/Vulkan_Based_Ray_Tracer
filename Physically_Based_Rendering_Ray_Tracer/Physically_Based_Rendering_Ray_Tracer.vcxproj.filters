@@ -37,6 +37,9 @@
     <Filter Include="resource\cornell box">
       <UniqueIdentifier>{6665039d-d874-40b0-9562-6c1ff8a614b3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="deps\tiny_gltf">
+      <UniqueIdentifier>{51a2a742-fd52-4c6d-8090-59b64a3c1066}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="util\memory.h">
@@ -99,7 +102,7 @@
     <ClInclude Include="util\Vec.h">
       <Filter>util</Filter>
     </ClInclude>
-    <ClInclude Include="graphics\Mesh.h">
+    <ClInclude Include="graphics\Scene.h">
       <Filter>graphics</Filter>
     </ClInclude>
     <ClInclude Include="vk_layer\ASManager.h">
@@ -128,6 +131,9 @@
     </ClInclude>
     <ClInclude Include="util\Timer.h">
       <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="deps\tiny_gltf\tiny_gltf.h">
+      <Filter>deps\tiny_gltf</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -168,9 +174,6 @@
     <ClCompile Include="vk_layer\DescriptorManager.cpp">
       <Filter>vk_layer</Filter>
     </ClCompile>
-    <ClCompile Include="graphics\Mesh.cpp">
-      <Filter>graphics</Filter>
-    </ClCompile>
     <ClCompile Include="vk_layer\ASManager.cpp">
       <Filter>vk_layer</Filter>
     </ClCompile>
@@ -185,6 +188,12 @@
     </ClCompile>
     <ClCompile Include="vk_layer\ComputePipeline.cpp">
       <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="test\graphics_SceneLoader_test.cpp">
+      <Filter>test</Filter>
+    </ClCompile>
+    <ClCompile Include="graphics\Scene.cpp">
+      <Filter>graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

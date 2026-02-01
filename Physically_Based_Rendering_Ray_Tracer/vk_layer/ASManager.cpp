@@ -23,50 +23,63 @@ BLAS::~BLAS() {
 	if (as != VK_NULL_HANDLE)pasm->vkDestroyAccelerationStructureKHR(pasm->_context, as, nullptr);
 }
 
-BLAS::BLAS(ASManager* address, Mesh& mesh):pasm(address) {
-	Buffer& vertexBuffer = mesh.get_vertex_buffer(pasm->_context.memAllocator());
-	Buffer& indexBuffer = mesh.get_index_buffer(pasm->_context.memAllocator());
-
+BLAS::BLAS(ASManager* address, Mesh& mesh, const Buffer& vertexBuffer, const Buffer& indexBuffer):pasm(address) {
 	VkDeviceAddress vertexBufferAddress = vertexBuffer.device_address();
 	VkDeviceAddress indexBufferAddress = indexBuffer.device_address();
 
-	uint32_t vertexCount = static_cast<uint32_t>(mesh.vertices.size());
-	uint32_t indexCount = static_cast<uint32_t>(mesh.indices.size());
-
 	// Geometry Setting
-	VkAccelerationStructureGeometryTrianglesDataKHR trianglesData{};
-	trianglesData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-	trianglesData.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-	trianglesData.vertexData.deviceAddress = vertexBufferAddress;
-	trianglesData.vertexStride = 3 * sizeof(Float);
-	trianglesData.maxVertex = vertexCount - 1;
-	trianglesData.indexType = VK_INDEX_TYPE_UINT32;
-	trianglesData.indexData.deviceAddress = indexBufferAddress;
-	trianglesData.pNext = nullptr;
+	pstd::vector<VkAccelerationStructureGeometryKHR> geometries;
+	pstd::vector<VkAccelerationStructureBuildRangeInfoKHR> rangeInfos;
+	pstd::vector<uint32_t> primitiveCounts;
 
-	VkAccelerationStructureGeometryKHR geometry{};
-	geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-	geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-	geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
-	geometry.geometry.triangles = trianglesData;
+	geometries.reserve(mesh.geometries.size());
+	rangeInfos.reserve(mesh.geometries.size());
+	primitiveCounts.reserve(mesh.geometries.size());
 
-	// Structure Building
+	for (const auto& geo : mesh.geometries) {
+		VkAccelerationStructureGeometryTrianglesDataKHR trianglesData{};
+		trianglesData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+		trianglesData.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
+		trianglesData.vertexStride = sizeof(Vector3f);
+		trianglesData.vertexData.deviceAddress = vertexBufferAddress;
+		trianglesData.maxVertex = mesh.firstVertex + geo.firstVertex + geo.vertexCount - 1;
+		trianglesData.indexType = VK_INDEX_TYPE_UINT32;
+		trianglesData.indexData.deviceAddress = indexBufferAddress;
+		trianglesData.pNext = nullptr;
+
+		VkAccelerationStructureGeometryKHR geometry{};
+		geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+		geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+		geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+		geometry.geometry.triangles = trianglesData;
+
+		geometries.push_back(geometry);
+
+		VkAccelerationStructureBuildRangeInfoKHR rangeInfo{};
+		rangeInfo.firstVertex = mesh.firstVertex + geo.firstVertex;
+		rangeInfo.primitiveCount = geo.primitiveCount;
+		rangeInfo.primitiveOffset = (mesh.firstIndex + geo.firstIndex) * sizeof(uint32_t);
+		rangeInfo.transformOffset = 0;
+
+		rangeInfos.push_back(rangeInfo);
+		primitiveCounts.push_back(geo.primitiveCount);
+	}
+
 	VkAccelerationStructureBuildGeometryInfoKHR buildInfo{};
 	buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
 	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 	buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
 	buildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-	buildInfo.geometryCount = 1;
-	buildInfo.pGeometries = &geometry;
+	buildInfo.geometryCount = static_cast<uint32_t>(geometries.size());
+	buildInfo.pGeometries = geometries.data();
 
-	uint32_t primitiveCount = indexCount / 3;
 	VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
 	sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
 	pasm->vkGetAccelerationStructureBuildSizesKHR(
 		pasm->_context,
 		VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
 		&buildInfo,
-		&primitiveCount,
+		primitiveCounts.data(),
 		&sizeInfo
 	);
 	
@@ -102,14 +115,8 @@ BLAS::BLAS(ASManager* address, Mesh& mesh):pasm(address) {
 	buildInfo.scratchData.deviceAddress = scratchAddress;
 
 	// Command
-	VkAccelerationStructureBuildRangeInfoKHR rangeInfo{};
-	rangeInfo.primitiveCount = primitiveCount;
-	rangeInfo.primitiveOffset = 0;
-	rangeInfo.firstVertex = 0;
-	rangeInfo.transformOffset = 0;
-
-	const auto* pRangeInfo = &rangeInfo;
-
+	const VkAccelerationStructureBuildRangeInfoKHR* pRangeInfo = rangeInfos.data();
+	
 	CommandBuffer cmdBuffer = pasm->_context.cmdPool().get_command_buffer();
 	cmdBuffer.begin(true);
 
@@ -151,18 +158,25 @@ TLAS::~TLAS() {
 	if (as != VK_NULL_HANDLE)pasm->vkDestroyAccelerationStructureKHR(pasm->_context, as, nullptr);
 }
 
-TLAS::TLAS(ASManager* address, pstd::vector<Mesh>& meshes, pstd::vector<MeshInstance>& instances):pasm(address) {
+TLAS::TLAS(ASManager* address, Scene& scene):pasm(address) {
 
 	pstd::vector<VkAccelerationStructureInstanceKHR> vkInstances;
 
+	
+
 	// Build BLAS
-	blas.resize(meshes.size());
-	for (uint32_t i = 0; i < meshes.size(); ++i) {
-		blas[i] = BLAS(pasm, meshes[i]);
+	blas.resize(scene.meshes.size());
+	for (uint32_t i = 0; i < scene.meshes.size(); ++i) {
+		blas[i] = BLAS(
+			address,
+			scene.meshes[i],
+			scene.get_vertex_buffer(pasm->_context.memAllocator()),
+			scene.get_index_buffer(pasm->_context.memAllocator())
+		);
 	}
 
 	// Instance Buffer
-	for (const auto& instance : instances) {
+	for (const auto& instance : scene.instances) {
 		VkAccelerationStructureInstanceKHR vkInst{};
 
 		const glm::mat4& m = instance.transform;
@@ -303,6 +317,6 @@ void ASManager::load_function() {
 		vkGetDeviceProcAddr(_context, "vkGetAccelerationStructureDeviceAddressKHR"));
 }
 
-TLAS ASManager::get_tlas(pstd::vector<Mesh>& meshes, pstd::vector<MeshInstance>& instances) {
-	return TLAS(this, meshes, instances);
+TLAS ASManager::get_tlas(Scene& scene) {
+	return TLAS(this, scene);
 }

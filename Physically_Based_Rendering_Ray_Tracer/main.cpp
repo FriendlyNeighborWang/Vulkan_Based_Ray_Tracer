@@ -1,3 +1,6 @@
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include <vulkan/vulkan.h>
 #include <iostream>
@@ -84,13 +87,12 @@ int main() {
 
 	// Load Scene
 	SceneLoader& sceneLoader = SceneLoader::Get();
-	sceneLoader.LoadScene("resource/CornellBox-Original-Merged.obj");
-	pstd::vector<Mesh> meshes = sceneLoader.getMesh();
-	pstd::vector<MeshInstance> instances = sceneLoader.getInstance();
+	Scene scene = sceneLoader.LoadScene("resource/cornell_box/scene.gltf");
+	
 
 
 	// Build Acceleration Structure
-	TLAS accelerationStructure = context.asManager().get_tlas(meshes, instances);
+	TLAS accelerationStructure = context.asManager().get_tlas(scene);
 
 	// Import Shader 
 	context.shaderManager().add_raygen_shader("./shader/raytrace.rgen.spv");
@@ -141,13 +143,11 @@ int main() {
 	}
 
 
-	// Vertex Buffer & Index Buffer
-	pstd::vector<Buffer*> vertexBuffers;
-	pstd::vector<Buffer*> indexBuffers;
-	for (auto& mesh : meshes) {
-		vertexBuffers.push_back(&mesh.get_vertex_buffer(context.memAllocator()));
-		indexBuffers.push_back(&mesh.get_index_buffer(context.memAllocator()));
-	}
+	// Vertex Buffer & Index Buffer & Material Buffer & Geometry Buffer
+	Buffer& vertexBuffer = scene.get_vertex_buffer(context.memAllocator());
+	Buffer& indexBuffer = scene.get_index_buffer(context.memAllocator());
+	Buffer& materialBuffer = scene.get_material_buffer(context.memAllocator());
+	Buffer& geometryBuffer = scene.get_geometry_buffer(context.memAllocator());
 
 
 	// Create Descriptor Set Layout
@@ -158,8 +158,11 @@ int main() {
 	layout.add_binding(BINDING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 	layout.add_binding(BINDING_TLAS, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 	
-	layout.add_binding(BINDING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR|VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-	layout.add_binding(BINDING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR| VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	layout.add_binding(BINDING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	layout.add_binding(BINDING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	layout.add_binding(BINDING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	layout.add_binding(BINDING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	
 
 	layout.build();
 
@@ -177,8 +180,11 @@ int main() {
 
 	context.descriptorManager().descriptor_write(0, BINDING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, renderTarget);
 	context.descriptorManager().descriptor_write(0, BINDING_TLAS, accelerationStructure);
-	context.descriptorManager().descriptor_write(0, BINDING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, *vertexBuffers[0]);
-	context.descriptorManager().descriptor_write(0, BINDING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, *indexBuffers[0]);
+	context.descriptorManager().descriptor_write(0, BINDING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vertexBuffer);
+	context.descriptorManager().descriptor_write(0, BINDING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, indexBuffer);
+	context.descriptorManager().descriptor_write(0, BINDING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, materialBuffer);
+	context.descriptorManager().descriptor_write(0, BINDING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, geometryBuffer);
+
 
 	context.descriptorManager().descriptor_write(1, BINDING_COMPUTE_FORMAT_TRANSFER_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, renderTarget);
 	context.descriptorManager().descriptor_write(1, BINDING_COMPUTE_FORMAT_TRANSFER_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, ldrImage);

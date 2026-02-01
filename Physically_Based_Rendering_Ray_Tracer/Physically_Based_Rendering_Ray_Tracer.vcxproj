@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\include;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\glm\glm;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\build\include;E:\VulkanSDK\1.4.321.1\Include;D:\C++Libiary\glfw-3.4.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\include;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\glm\glm;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\build\include;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\stb;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\json;E:\VulkanSDK\1.4.321.1\Include;D:\C++Libiary\glfw-3.4.bin.WIN64\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -105,7 +105,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
@@ -136,8 +136,9 @@
     <ClInclude Include="base\base.h" />
     <ClInclude Include="base\shader_base.h" />
     <ClInclude Include="deps\stb\stb_image_write.h" />
+    <ClInclude Include="deps\tiny_gltf\tiny_gltf.h" />
     <ClInclude Include="deps\tlsf\tlsf.h" />
-    <ClInclude Include="graphics\Mesh.h" />
+    <ClInclude Include="graphics\Scene.h" />
     <ClInclude Include="graphics\Renderer.h" />
     <ClInclude Include="graphics\SceneLoader.h" />
     <ClInclude Include="graphics\Window.h" />
@@ -167,9 +168,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="deps\tlsf\tlsf.c" />
-    <ClCompile Include="graphics\Mesh.cpp" />
     <ClCompile Include="graphics\Renderer.cpp" />
+    <ClCompile Include="graphics\Scene.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="test\graphics_SceneLoader_test.cpp" />
     <ClCompile Include="test\util_log_test.cpp" />
     <ClCompile Include="test\util_memory_test.cpp" />
     <ClCompile Include="test\util_pstd_test.cpp" />

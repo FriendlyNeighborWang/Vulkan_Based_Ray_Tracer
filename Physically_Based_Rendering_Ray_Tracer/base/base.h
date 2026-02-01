@@ -5,8 +5,16 @@
 #include <exception>
 #include <vulkan/vulkan.h>
 
+
+
 #include "shader_base.h"
 #include "util/log.h"
+
+// Debug && Log
+
+inline void InitLogging() {
+	REGISTER_LOG("scene_loader", true);
+}
 
 // --------------------Macro--------------------
 
@@ -17,14 +25,9 @@ using Float = double;
 using Float = float;
 #endif // USE_DOUBLE_AS_FLOAT
 
-// Debug && Log
 
-inline void InitLogging() {
-	REGISTER_LOG("scene_loader", true);
-}
-
-const uint32_t WIDTH = 1200;
-const uint32_t HEIGHT = 900;
+const uint32_t WIDTH = 1600;
+const uint32_t HEIGHT = 1200;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 
@@ -43,9 +46,12 @@ struct Vector2f;
 struct Vector3f;
 struct Normal;
 
-// Geometry
+// Scene
+struct Material;
+struct Geometry;
 struct Mesh;
 struct MeshInstance;
+struct Scene;
 
 // Util
 class TimerManager;
@@ -68,7 +74,6 @@ class RTPipeline;
 class ComputePipeline;
 class Fence;
 class Semaphore;
-
 
 
 

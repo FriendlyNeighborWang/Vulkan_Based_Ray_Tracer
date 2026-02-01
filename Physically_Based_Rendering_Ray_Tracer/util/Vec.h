@@ -123,6 +123,65 @@ struct Vector3f {
 #endif
 };
 
+// ==================== Vector4f Declaration ====================
+struct Vector4f {
+	// Constructors
+	Vector4f() = default;
+	Vector4f(Float v);
+	Vector4f(Float x, Float y, Float z, Float w);
+	Vector4f(const Vector3f& v, Float w);
+	Vector4f(const Vector4f& v);
+	Vector4f(Vector4f&& v) noexcept;
+
+#ifdef USE_DOUBLE_AS_FLOAT
+	explicit Vector4f(glm::dvec4 data);
+#else
+	explicit Vector4f(glm::vec4 data);
+#endif
+
+	// Assignment operators
+	Vector4f& operator=(const Vector4f& v);
+	Vector4f& operator=(Vector4f&& v) noexcept;
+
+	// Arithmetic operators
+	Vector4f operator+(const Vector4f& v) const;
+	Vector4f& operator+=(const Vector4f& v);
+	Vector4f operator-(const Vector4f& v) const;
+	Vector4f& operator-=(const Vector4f& v);
+	Vector4f operator*(const Float& f) const;
+	Vector4f& operator*=(const Float& f);
+	Vector4f operator/(const Float& f) const;
+	Vector4f& operator/=(const Float& f);
+	Vector4f operator-() const;
+
+	// Comparison operators
+	bool operator==(const Vector4f& v) const;
+	bool operator!=(const Vector4f& v) const;
+
+	// Accessors
+	Float& x();
+	const Float& x() const;
+	Float& y();
+	const Float& y() const;
+	Float& z();
+	const Float& z() const;
+	Float& w();
+	const Float& w() const;
+	Float& operator[](int i);
+	const Float& operator[](int i) const;
+
+	// Math methods
+	Float norm2() const;
+	Float norm() const;
+	Vector3f xyz() const;
+
+#ifdef USE_DOUBLE_AS_FLOAT
+	glm::dvec4 data;
+#else
+	glm::vec4 data;
+#endif
+};
+
 // ==================== Point2f Declaration ====================
 struct Point2f {
 	Point2f() = default;
@@ -253,6 +312,8 @@ struct Point3f {
 #endif
 };
 
+
+
 // ==================== Normal Declaration ====================
 struct Normal {
 	Normal() = default;
@@ -350,6 +411,18 @@ Vector3f Max(const Vector3f& v1, const Vector3f& v2);
 Vector3f Abs(const Vector3f& v);
 Vector3f Reflect(const Vector3f& wi, const Vector3f& n);
 
+// Vector4f
+Vector4f operator*(const Float& f, const Vector4f& v);
+Float Dot(const Vector4f& v1, const Vector4f& v2);
+Float MinComponentValue(const Vector4f& v);
+Float MaxComponentValue(const Vector4f& v);
+size_t MinComponentValueIndex(const Vector4f& v);
+size_t MaxComponentValueIndex(const Vector4f& v);
+Vector4f Min(const Vector4f& v1, const Vector4f& v2);
+Vector4f Max(const Vector4f& v1, const Vector4f& v2);
+Vector4f Abs(const Vector4f& v);
+Vector4f Lerp(Float t, const Vector4f& v1, const Vector4f& v2);
+
 // Normal
 Normal operator*(const Float& f, const Normal& n);
 
@@ -390,7 +463,7 @@ public:
 	Vector3f diagonal() const;
 	Float surface_area() const;
 	Float volume() const;
-	int maxDimension() const;
+	size_t maxDimension() const;
 	bool isInside(const Point3f& p) const;
 	bool isEmpty() const;
 	Point3f center() const;

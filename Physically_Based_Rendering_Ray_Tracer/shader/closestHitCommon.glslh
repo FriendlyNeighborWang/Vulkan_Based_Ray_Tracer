@@ -16,34 +16,69 @@ layout(binding = BINDING_INDICES, set = 0, scalar) buffer Indices{
 	uint indices[];
 };
 
+struct Material{
+	vec4 baseColor;
+	float metallic;
+	float roughness;
+};
+
+layout(binding = BINDING_MATERIAL, set = 0, scalar) buffer Materials{
+	Material materials[];
+};
+
+struct GeometryStruct {
+		uint materialIndex;
+		uint firstVertex;
+		uint firstIndex;
+		uint _padding;
+	};
+
+layout(binding = BINDING_GEOMETRY, set = 0, scalar) buffer Geometrys{
+	GeometryStruct geometries[];
+};
+
 layout(location = 0) rayPayloadInEXT PassableInfo pld;
 
 struct HitInfo{
 	vec3 objectPosition;
 	vec3 worldPosition;
 	vec3 worldNormal;
-	vec3 color;
+	Material material;
 };
+
+GeometryStruct getCurrentGeometry(){
+	uint globalGeometryIndex = gl_InstanceCustomIndexEXT + gl_GeometryIndexEXT;
+	return geometries[globalGeometryIndex];
+}
+
 
 HitInfo getObjectHitInfo(){
 	HitInfo result;
+	
+	GeometryStruct geo = getCurrentGeometry();
 
+	// objectPosition
 	const int primitiveID = gl_PrimitiveID;
+	const uint baseIndex = geo.firstIndex + 3 * primitiveID;
+	const uint baseVertex = geo.firstVertex;
 
-	const uint i0 = indices[3 * primitiveID + 0];
-	const uint i1 = indices[3 * primitiveID + 1];
-	const uint i2 = indices[3 * primitiveID + 2];
+	const uint i0 = indices[baseIndex + 0];
+	const uint i1 = indices[baseIndex + 1];
+	const uint i2 = indices[baseIndex + 2];
 
-	const vec3 v0 = vertices[i0];
-	const vec3 v1 = vertices[i1];
-	const vec3 v2 = vertices[i2];
+	const vec3 v0 = vertices[baseVertex + i0];
+	const vec3 v1 = vertices[baseVertex + i1];
+	const vec3 v2 = vertices[baseVertex + i2];
 
 	vec3 barycentrics = vec3(0.0, attributes.x, attributes.y);
 	barycentrics.x = 1.0 - barycentrics.y - barycentrics.z;
 
 	result.objectPosition = v0 * barycentrics.x + v1 * barycentrics.y + v2 * barycentrics.z;
+
+	// worldPosition
 	result.worldPosition = gl_ObjectToWorldEXT * vec4(result.objectPosition, 1.0f);
 
+	// worldNormal
 	const vec3 objectNormal = cross(v1 - v0, v2 - v0);
 	result.worldNormal = normalize((objectNormal * gl_WorldToObjectEXT).xyz);
 
@@ -51,6 +86,8 @@ HitInfo getObjectHitInfo(){
 
 	result.worldNormal = faceforward(result.worldNormal, rayDirection, result.worldNormal);
 
+	// material
+	result.material = materials[geo.materialIndex];
 
 	return result;
 }

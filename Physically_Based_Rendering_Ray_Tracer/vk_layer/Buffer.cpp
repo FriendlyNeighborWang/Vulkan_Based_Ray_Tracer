@@ -30,7 +30,7 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept {
 	return *this;
 }
 
-VkDeviceAddress Buffer::device_address() {
+VkDeviceAddress Buffer::device_address() const{
 	VkBufferDeviceAddressInfo addressInfo{};
 	addressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
 	addressInfo.buffer = _buffer;

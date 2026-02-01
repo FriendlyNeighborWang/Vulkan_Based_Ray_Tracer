@@ -35,7 +35,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 		std::string message = pCallbackData->pMessage;
 		//if(message.find("Internal Warning")==std::string::npos)
 		std::cerr << "[Shader] " << message << std::endl;
-	}else if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+	}else if (messageSeverity > VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
 		std::cerr << "[Validation] " << pCallbackData->pMessage << std::endl;
 	}
 

@@ -817,7 +817,179 @@ inline Vector2f Lerp(Float t, const Vector2f& v1, const Vector2f& v2) {
 	return (Float(1) - t) * v1 + t * v2;
 }
 
-// Point2f functions
+// ==================== Vector4f Implementation ====================
+
+inline Vector4f::Vector4f(Float v) : data(v) {}
+
+inline Vector4f::Vector4f(Float x, Float y, Float z, Float w) : data(x, y, z, w) {}
+
+inline Vector4f::Vector4f(const Vector3f& v, Float w) : data(v.x(), v.y(), v.z(), w) {}
+
+inline Vector4f::Vector4f(const Vector4f& v) : data(v.data) {}
+
+inline Vector4f::Vector4f(Vector4f&& v) noexcept : data(std::move(v.data)) {}
+
+#ifdef USE_DOUBLE_AS_FLOAT
+inline Vector4f::Vector4f(glm::dvec4 data) : data(data) {}
+#else
+inline Vector4f::Vector4f(glm::vec4 data) : data(data) {}
+#endif
+
+inline Vector4f& Vector4f::operator=(const Vector4f& v) {
+	if (this == &v) return *this;
+	data = v.data;
+	return *this;
+}
+
+inline Vector4f& Vector4f::operator=(Vector4f&& v) noexcept {
+	if (this == &v) return *this;
+	data = std::move(v.data);
+	return *this;
+}
+
+inline Vector4f Vector4f::operator+(const Vector4f& v) const {
+	return { x() + v.x(), y() + v.y(), z() + v.z(), w() + v.w() };
+}
+
+inline Vector4f& Vector4f::operator+=(const Vector4f& v) {
+	x() += v.x();
+	y() += v.y();
+	z() += v.z();
+	w() += v.w();
+	return *this;
+}
+
+inline Vector4f Vector4f::operator-(const Vector4f& v) const {
+	return { x() - v.x(), y() - v.y(), z() - v.z(), w() - v.w() };
+}
+
+inline Vector4f& Vector4f::operator-=(const Vector4f& v) {
+	x() -= v.x();
+	y() -= v.y();
+	z() -= v.z();
+	w() -= v.w();
+	return *this;
+}
+
+inline Vector4f Vector4f::operator*(const Float& f) const {
+	return { x() * f, y() * f, z() * f, w() * f };
+}
+
+inline Vector4f& Vector4f::operator*=(const Float& f) {
+	x() *= f;
+	y() *= f;
+	z() *= f;
+	w() *= f;
+	return *this;
+}
+
+inline Vector4f Vector4f::operator/(const Float& f) const {
+	Float inv = Float(1) / f;
+	return { x() * inv, y() * inv, z() * inv, w() * inv };
+}
+
+inline Vector4f& Vector4f::operator/=(const Float& f) {
+	Float inv = Float(1) / f;
+	x() *= inv;
+	y() *= inv;
+	z() *= inv;
+	w() *= inv;
+	return *this;
+}
+
+inline Vector4f Vector4f::operator-() const {
+	return { -x(), -y(), -z(), -w() };
+}
+
+inline bool Vector4f::operator==(const Vector4f& v) const {
+	return x() == v.x() && y() == v.y() && z() == v.z() && w() == v.w();
+}
+
+inline bool Vector4f::operator!=(const Vector4f& v) const {
+	return !(*this == v);
+}
+
+inline Float& Vector4f::x() { return data.x; }
+inline const Float& Vector4f::x() const { return data.x; }
+inline Float& Vector4f::y() { return data.y; }
+inline const Float& Vector4f::y() const { return data.y; }
+inline Float& Vector4f::z() { return data.z; }
+inline const Float& Vector4f::z() const { return data.z; }
+inline Float& Vector4f::w() { return data.w; }
+inline const Float& Vector4f::w() const { return data.w; }
+
+inline Float& Vector4f::operator[](int i) {
+	assert(i >= 0 && i < 4 && "Vector4f::operator[]: index out of range");
+	return data[i];
+}
+
+inline const Float& Vector4f::operator[](int i) const {
+	assert(i >= 0 && i < 4 && "Vector4f::operator[]: index out of range");
+	return data[i];
+}
+
+inline Float Vector4f::norm2() const {
+	return x() * x() + y() * y() + z() * z() + w() * w();
+}
+
+inline Float Vector4f::norm() const {
+	return std::sqrt(norm2());
+}
+
+inline Vector3f Vector4f::xyz() const {
+	return Vector3f(x(), y(), z());
+}
+
+// Vector4f global functions
+inline Vector4f operator*(const Float& f, const Vector4f& v) {
+	return v * f;
+}
+
+inline Float Dot(const Vector4f& v1, const Vector4f& v2) {
+	return v1.x() * v2.x() + v1.y() * v2.y() + v1.z() * v2.z() + v1.w() * v2.w();
+}
+
+inline Float MinComponentValue(const Vector4f& v) {
+	return std::min(std::min(v.x(), v.y()), std::min(v.z(), v.w()));
+}
+
+inline Float MaxComponentValue(const Vector4f& v) {
+	return std::max(std::max(v.x(), v.y()), std::max(v.z(), v.w()));
+}
+
+inline size_t MinComponentValueIndex(const Vector4f& v) {
+	size_t idx = 0;
+	Float minVal = v.x();
+	if (v.y() < minVal) { minVal = v.y(); idx = 1; }
+	if (v.z() < minVal) { minVal = v.z(); idx = 2; }
+	if (v.w() < minVal) { idx = 3; }
+	return idx;
+}
+
+inline size_t MaxComponentValueIndex(const Vector4f& v) {
+	size_t idx = 0;
+	Float maxVal = v.x();
+	if (v.y() > maxVal) { maxVal = v.y(); idx = 1; }
+	if (v.z() > maxVal) { maxVal = v.z(); idx = 2; }
+	if (v.w() > maxVal) { idx = 3; }
+	return idx;
+}
+
+inline Vector4f Min(const Vector4f& v1, const Vector4f& v2) {
+	return Vector4f(std::min(v1.x(), v2.x()), std::min(v1.y(), v2.y()), std::min(v1.z(), v2.z()), std::min(v1.w(), v2.w()));
+}
+
+inline Vector4f Max(const Vector4f& v1, const Vector4f& v2) {
+	return Vector4f(std::max(v1.x(), v2.x()), std::max(v1.y(), v2.y()), std::max(v1.z(), v2.z()), std::max(v1.w(), v2.w()));
+}
+
+inline Vector4f Abs(const Vector4f& v) {
+	return Vector4f(pstd::abs(v.x()), pstd::abs(v.y()), pstd::abs(v.z()), pstd::abs(v.w()));
+}
+
+inline Vector4f Lerp(Float t, const Vector4f& v1, const Vector4f& v2) {
+	return (Float(1) - t) * v1 + t * v2;
+}
 
 // ==================== Bounds Implementation ====================
 
@@ -865,7 +1037,7 @@ inline Float Bounds::volume() const {
 	return d.x() * d.y() * d.z();
 }
 
-inline int Bounds::maxDimension() const {
+inline size_t Bounds::maxDimension() const {
 	Vector3f d = diagonal();
 	return MaxComponentValueIndex(d);
 }

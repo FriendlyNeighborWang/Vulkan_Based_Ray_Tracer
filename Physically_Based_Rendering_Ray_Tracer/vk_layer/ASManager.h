@@ -2,7 +2,7 @@
 #define VULKAN_ACCELERATION_STRUCTURE_MANAGER
 
 #include "base/base.h"
-#include "graphics/Mesh.h"
+#include "graphics/Scene.h"
 #include "Context.h"
 
 class BLAS {
@@ -20,7 +20,7 @@ public:
 
 private:
 	
-	BLAS(ASManager* address, Mesh& mesh);
+	BLAS(ASManager* address, Mesh& mesh, const Buffer& vertexBuffer, const Buffer& indexBuffer);
 
 	Buffer asBuffer;
 	VkAccelerationStructureKHR as = VK_NULL_HANDLE;
@@ -41,7 +41,7 @@ public:
 
 private:
 
-	TLAS(ASManager* address, pstd::vector<Mesh>& meshes, pstd::vector<MeshInstance>& instances);
+	TLAS(ASManager* address, Scene& scene);
 
 	Buffer asBuffer;
 	pstd::vector<BLAS> blas;
@@ -63,7 +63,7 @@ public:
 
 	void init();
 
-	TLAS get_tlas(pstd::vector<Mesh>& meshes, pstd::vector<MeshInstance>& instances);
+	TLAS get_tlas(Scene& scene);
 
 private:
 
@@ -80,7 +80,7 @@ private:
 	PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;	
 
 
-	Buffer asBuffer;
+
 	Context& _context;
 };
 

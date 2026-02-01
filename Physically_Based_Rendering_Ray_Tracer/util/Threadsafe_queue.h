@@ -42,7 +42,7 @@ namespace pstd {
 			std::lock_guard<std::mutex> lock(mtx);
 			return data_queue.empty();
 		}
-		unsigned size() {
+		size_t size() {
 			std::lock_guard<std::mutex> lock(mtx);
 			return data_queue.size();
 		}

@@ -12,7 +12,7 @@ public:
 
 	~Buffer();
 
-	VkDeviceAddress device_address();
+	VkDeviceAddress device_address() const;
 
 	void* map_memory();
 	void unmap_memory();
