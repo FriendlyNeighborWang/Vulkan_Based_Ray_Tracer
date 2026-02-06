@@ -8,21 +8,23 @@
 
 hitAttributeEXT vec2 attributes;
 
-layout(binding = BINDING_VERTICES, set = 0, scalar) buffer Vertices{
+layout(binding = BINDING_RAY_TRACING_VERTICES, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Vertices{
 	vec3 vertices[];
 };
 
-layout(binding = BINDING_INDICES, set = 0, scalar) buffer Indices{
+layout(binding = BINDING_RAY_TRACING_INDICES, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Indices{
 	uint indices[];
 };
 
 struct Material{
-	vec4 baseColor;
+	vec4 albedo;
+	vec3 emission;
 	float metallic;
 	float roughness;
+	vec3 padding;
 };
 
-layout(binding = BINDING_MATERIAL, set = 0, scalar) buffer Materials{
+layout(binding = BINDING_RAY_TRACING_MATERIAL, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Materials{
 	Material materials[];
 };
 
@@ -33,7 +35,7 @@ struct GeometryStruct {
 		uint _padding;
 	};
 
-layout(binding = BINDING_GEOMETRY, set = 0, scalar) buffer Geometrys{
+layout(binding = BINDING_RAY_TRACING_GEOMETRY, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Geometrys{
 	GeometryStruct geometries[];
 };
 

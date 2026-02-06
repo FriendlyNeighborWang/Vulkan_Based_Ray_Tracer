@@ -2,7 +2,8 @@
 #define GLSL_SHADER_COMMON_H
 
 struct PassableInfo{
-	vec3 color;
+	vec3 radiance;
+	vec3 throughput;
 	vec3 rayOrigin;
 	vec3 rayDirection;
 	uint rngState;
@@ -18,6 +19,6 @@ float stepAndOutputRNGFloat(inout uint rngState)
   return float(word) / 4294967295.0f;
 }
 
-const float k_pi = 3.14159265;
+const float PI = 3.14159265;
 
 #endif // !GLSL_SHADER_COMMON_H

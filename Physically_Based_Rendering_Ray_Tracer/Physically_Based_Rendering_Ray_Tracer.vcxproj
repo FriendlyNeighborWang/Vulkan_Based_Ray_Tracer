@@ -189,7 +189,7 @@
     <ClCompile Include="vk_layer\VkMemoryAllocator.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="shader\material_diffuse.rchit">
+    <CustomBuild Include="shader\material_CookTorrance.rchit">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
@@ -210,7 +210,7 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
-    <CustomBuild Include="shader\format_trans.comp">
+    <CustomBuild Include="shader\tone_mapping.comp">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
@@ -218,6 +218,7 @@
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
     <None Include="resource\cornell_box\scene.gltf" />
+    <None Include="shader\material_CookTorrance.glslh" />
     <None Include="util\Vec.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

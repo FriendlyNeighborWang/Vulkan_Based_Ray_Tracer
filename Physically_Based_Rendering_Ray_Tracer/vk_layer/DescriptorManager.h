@@ -58,23 +58,20 @@ public:
 
 	~DescriptorManager();
 
-	DescriptorSetLayout& create_null_descriptor_set_layout();
+	DescriptorSetLayout& create_null_descriptor_set_layout(const std::string& name);
 
 	// Must be called after layout bindings have been added and layouts have been built
 	void init_descriptor_pool(uint32_t max_sets_num);
 
-	DescriptorSet& allocate_descriptor_set(uint32_t layout_idx);
+	DescriptorSet& allocate_descriptor_set(const std::string& layout_name, const std::string& set_name);
 
-	// return value just for tmp use, not ensure available after another allocation;
-	pstd::span<DescriptorSet> allocate_descriptor_sets(const pstd::vector<uint32_t>& idx_list);
+	pstd::vector<VkDescriptorSetLayout> get_descriptor_set_layouts(const pstd::vector<std::string>& layout_names);
 
-	pstd::vector<VkDescriptorSetLayout> get_descriptor_set_layouts(const pstd::vector<uint32_t>& layout_idx);
-
-	void descriptor_write(uint32_t set_idx, uint32_t binding, VkDescriptorType type, const Image& image);
+	void descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type, const Image& image);
 	
-	void descriptor_write(uint32_t set_idx, uint32_t binding, VkDescriptorType type,  const Buffer& buffer);
+	void descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type,  const Buffer& buffer);
 
-	void descriptor_write(uint32_t set_idx, uint32_t binding, const VkAccelerationStructureKHR& as);
+	void descriptor_write(const std::string& set_name, uint32_t binding, const VkAccelerationStructureKHR& as);
 
 	void update_descriptor_set();
 	
@@ -86,9 +83,9 @@ private:
 	std::list<VkDescriptorBufferInfo> writesBuffer;
 	std::list<VkWriteDescriptorSetAccelerationStructureKHR> writesAS;
 
-	pstd::vector<DescriptorSet> sets;
+	std::unordered_map<std::string, DescriptorSet> sets;
 
-	pstd::vector<DescriptorSetLayout> layouts;
+	std::unordered_map<std::string, DescriptorSetLayout> layouts;
 
 	std::unordered_map<VkDescriptorType, uint32_t> total_type_num;
 

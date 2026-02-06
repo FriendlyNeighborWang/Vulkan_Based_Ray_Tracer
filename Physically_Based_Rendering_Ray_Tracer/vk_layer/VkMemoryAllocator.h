@@ -21,6 +21,7 @@ public:
 
 	void blit_image(CommandBuffer& cmdBuffer, VkImage srcImage, VkImageLayout srcLayout, VkExtent2D srcExtent, VkImage dstImage, VkImageLayout dstLayout, VkExtent2D dstExtent, VkFilter filter) const;
 
+
 	Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) const ;
 
 	// From Host to Device (with Memory map)
@@ -28,6 +29,9 @@ public:
 
 	// From Device to Device
 	void copy_to_buffer(CommandBuffer& cmdBuffer, Buffer& srcBuffer, Buffer& dstBuffer) const;
+
+	// From Image
+	void copy_to_buffer(CommandBuffer& cmdBuffer, Image& srcImage, Buffer& dstBuffer) const;
 
 	// From Host to Device (with Staging buffer)
 	void copy_to_buffer_directly(const void* data, Buffer& dstBuffer) const;

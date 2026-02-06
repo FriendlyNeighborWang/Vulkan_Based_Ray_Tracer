@@ -9,7 +9,6 @@
 #include "Window.h"
 
 
-
 class Renderer {
 public:
 	Renderer(Context& context, Window& window, SwapChain& swapChain);
@@ -20,9 +19,13 @@ public:
 
 	void register_compute_pipeline(std::string name, ComputePipeline& pipeline);
 
-	void render();
+	void realtime_render();
+	void offline_render(const std::string& name);
 
 private:
+
+	void recreateSwapChain();
+
 
 	// Rendering Info
 	pstd::vector<VkStridedDeviceAddressRegionKHR> groupRegions;

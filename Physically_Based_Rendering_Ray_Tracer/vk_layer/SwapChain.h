@@ -17,13 +17,15 @@ public:
 	SwapChain(const SwapChain&) = delete;
 	SwapChain& operator=(const SwapChain&) = delete;
 
+	void recreate(GLFWwindow* window);
+
 	VkResult acquire_next_image(VkSemaphore semaphore, VkFence fence, uint32_t* imageIndex, uint32_t timeout = UINT64_MAX);
 
 	static bool check_device_swapchain_support(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 	void image_layout_transtion(uint32_t idx, CommandBuffer& cmdBuffer, VkImageLayout targetLayout, VkAccessFlags srcAccess, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage);
 
-	void present(uint32_t imageIndex, const pstd::vector<VkSemaphore>& waitSemaphores);
+	VkResult present(uint32_t imageIndex, const pstd::vector<VkSemaphore>& waitSemaphores);
 
 	VkSwapchainKHR get() const { return swapChain; }
 	VkFormat getImageFormat() const { return _format; }

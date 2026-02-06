@@ -72,13 +72,17 @@ private:
 
 			if (mat.values.find("baseColorFactor") != mat.values.end()) {
 				const auto& color = mat.values.at("baseColorFactor").ColorFactor();
-				material.baseColor = Vector4f((float)color[0], (float)color[1], (float)color[2], (float)color[3]);
+				material.albedo = Vector4f((float)color[0], (float)color[1], (float)color[2], (float)color[3]);
 			}
 			if (mat.values.find("metallicFactor") != mat.values.end()) {
 				material.metallic = (float)mat.values.at("metallicFactor").Factor();
 			}
 			if (mat.values.find("roughnessFactor") != mat.values.end()) {
 				material.roughness = (float)mat.values.at("roughnessFactor").Factor();
+			}
+			if (mat.additionalValues.find("emissiveFactor") != mat.additionalValues.end()) {
+				const auto& emissive = mat.additionalValues.at("emissiveFactor").ColorFactor();
+				material.emission = Vector3f((float)emissive[0], (float)emissive[1], (float)emissive[2]);
 			}
 
 

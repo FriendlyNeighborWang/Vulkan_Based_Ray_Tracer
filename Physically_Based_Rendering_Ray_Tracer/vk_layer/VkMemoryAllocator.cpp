@@ -88,6 +88,28 @@ void VkMemoryAllocator::copy_to_buffer(CommandBuffer& cmdBuffer, Buffer& srcBuff
 	vkCmdCopyBuffer(cmdBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 }
 
+void VkMemoryAllocator::copy_to_buffer(CommandBuffer& cmdBuffer, Image& srcImage, Buffer& dstBuffer) const {
+	VkBufferImageCopy region{};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+	region.imageExtent = { srcImage.extent.width, srcImage.extent.height, 1 };
+	region.imageOffset = { 0,0,0 };
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+	region.imageSubresource.mipLevel = 0;
+
+	vkCmdCopyImageToBuffer(
+		cmdBuffer,
+		srcImage,
+		srcImage.layout,
+		dstBuffer,
+		1, &region
+	);
+}
+
+
 void VkMemoryAllocator::copy_to_buffer_directly(const void* data, Buffer& dstBuffer) const{
 	Buffer stagingBuffer = create_buffer(
 		dstBuffer.size,
@@ -183,6 +205,7 @@ void VkMemoryAllocator::blit_image(CommandBuffer& cmdBuffer, VkImage srcImage, V
 		filter
 	);
 }
+
 
 VkDeviceMemory VkMemoryAllocator::allocate_memory(VkMemoryRequirements memReq, VkMemoryPropertyFlags properties) const{
 	VkMemoryAllocateFlagsInfo flagsInfo{};

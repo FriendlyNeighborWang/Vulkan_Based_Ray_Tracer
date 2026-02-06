@@ -15,7 +15,7 @@ public:
 
 		window = glfwCreateWindow(_width, _height, "Vulkan RayTracing", nullptr, nullptr);
 		glfwSetWindowUserPointer(window, this);
-		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+		glfwSetFramebufferSizeCallback(window, windowResizeCallback);
 	}
 	Window(const Window&) = delete;
 	Window& operator=(const Window&) = delete;
@@ -44,16 +44,21 @@ public:
 		return window;
 	}
 
+	VkExtent2D extent() { VkExtent2D{ _width, _height }; }
 	
 
 private:
 
-	static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-		
+	static void windowResizeCallback(GLFWwindow* window, int width, int height) {
+		auto app = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+		app->window_resized = true;
+		app->_width = static_cast<uint32_t>(width);
+		app->_height = static_cast<uint32_t>(height);
 	}
 
 	GLFWwindow* window = nullptr;
 	uint32_t _width, _height;
+	bool window_resized = false;
 };
 
 #endif // !PBRT_GRAPHICS_WINDOW_H

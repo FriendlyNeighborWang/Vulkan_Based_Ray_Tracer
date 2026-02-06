@@ -6,8 +6,8 @@
 #include "../base/shader_base.h"
 #include "shaderCommon.glslh"
 
-layout(binding = BINDING_RENDERING_TARGET_IMAGE, set = 0, rgba32f) uniform image2D storageImage;
-layout(binding = BINDING_TLAS, set = 0) uniform accelerationStructureEXT tlas;
+layout(binding = BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, set = RAY_TRACING_IMAGE_SET, rgba32f) uniform image2D storageImage;
+layout(binding = BINDING_RAY_TRACING_TLAS, set = RAY_TRACING_UNIFORM_SET) uniform accelerationStructureEXT tlas;
 
 
 layout(push_constant) uniform PushConsts{
@@ -20,7 +20,7 @@ vec2 randomGaussian(inout uint rngState){
 	const float u1 = max(1e-38, stepAndOutputRNGFloat(rngState));
 	const float u2 = stepAndOutputRNGFloat(rngState);
 	const float r = sqrt(-2.0 * log(u1));
-	const float theta = 2 * k_pi * u2;
+	const float theta = 2 * PI * u2;
 	return r * vec2(cos(theta), sin(theta));
 }
 
@@ -32,8 +32,6 @@ void main(){
 		return;
 	}
 
-	pld.rngState = uint((pushConstants.sample_batch * resolution.y + pixel.y) * resolution.x + pixel.x);
-
 	const vec3 cameraOrigin = vec3(-0.001, 1.0, 6.0);
 	const float fovVerticalSlope = 1.0/5.0;
 
@@ -43,6 +41,11 @@ void main(){
 
 
 	for(int sampleIdx = 0; sampleIdx < NUM_SAMPLES; sampleIdx++){
+		pld.rngState = uint((pushConstants.sample_batch * NUM_SAMPLES + sampleIdx) * resolution.y * resolution.x + pixel.y * resolution.x + pixel.x);
+		pld.radiance = vec3(0.0);
+		pld.throughput = vec3(1.0);
+		pld.rayHitSky = false;
+
 		vec3 rayOrigin = cameraOrigin;
 
 		const vec2 randomPixelCenter = vec2(pixel) + vec2(0.5) + 0.375 * randomGaussian(pld.rngState);
@@ -69,16 +72,15 @@ void main(){
 				0
 			);
 
-			accumulatedRayColor *= pld.color;
 
-			if(pld.rayHitSky){
-				summedPixelColor += accumulatedRayColor;
+			if(pld.rayHitSky)
 				break;
-			}else{
-				rayOrigin = pld.rayOrigin;
-				rayDirection = pld.rayDirection;
-			}
+
+			rayOrigin = pld.rayOrigin;
+			rayDirection = pld.rayDirection;
+			
 		}
+		summedPixelColor += pld.radiance;
 	}
 
 	vec3 averagePixelColor = summedPixelColor/float(NUM_SAMPLES);

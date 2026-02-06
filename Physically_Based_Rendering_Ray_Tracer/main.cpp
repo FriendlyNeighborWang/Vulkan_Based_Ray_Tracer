@@ -97,7 +97,7 @@ int main() {
 	// Import Shader 
 	context.shaderManager().add_raygen_shader("./shader/raytrace.rgen.spv");
 	context.shaderManager().add_miss_shader("./shader/raytrace.rmiss.spv");
-	context.shaderManager().add_hit_group_shader("./shader/material_diffuse.rchit.spv");
+	context.shaderManager().add_hit_group_shader("./shader/material_CookTorrance.rchit.spv");
 
 	context.shaderManager().build_shader_stages_and_shader_groups();
 
@@ -152,50 +152,54 @@ int main() {
 
 	// Create Descriptor Set Layout
 	
-	DescriptorSetLayout& layout = context.descriptorManager().create_null_descriptor_set_layout();
-	DescriptorSetLayout& compute_layout = context.descriptorManager().create_null_descriptor_set_layout();
+	DescriptorSetLayout& rt_image_layout = context.descriptorManager().create_null_descriptor_set_layout("RAY_TRACING_IMAGE_SET_LAYOUT");
+	DescriptorSetLayout& rt_uniform_layout = context.descriptorManager().create_null_descriptor_set_layout("RAY_TRACING_UNIFORM_SET_LAYOUT");
+	DescriptorSetLayout& compute_tone_mapping_layout = context.descriptorManager().create_null_descriptor_set_layout("COMPUTE_TONE_MAPPING_SET_LAYOUT");
 
-	layout.add_binding(BINDING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-	layout.add_binding(BINDING_TLAS, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	rt_image_layout.add_binding(BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+
+	rt_image_layout.build();
 	
-	layout.add_binding(BINDING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-	layout.add_binding(BINDING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-	layout.add_binding(BINDING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-	layout.add_binding(BINDING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_TLAS, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
 	
+	rt_uniform_layout.build();
 
-	layout.build();
+	compute_tone_mapping_layout.add_binding(BINDING_COMPUTE_TONE_MAPPING_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+	compute_tone_mapping_layout.add_binding(BINDING_COMPUTE_TONE_MAPPING_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
 
-	compute_layout.add_binding(BINDING_COMPUTE_FORMAT_TRANSFER_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-	compute_layout.add_binding(BINDING_COMPUTE_FORMAT_TRANSFER_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-
-	compute_layout.build();
+	compute_tone_mapping_layout.build();
 
 	// PushConstant & Allocate Descriptor Set & Write Descriptor Set
 
-	context.descriptorManager().init_descriptor_pool(2);
-	DescriptorSet& rayTracingSet = context.descriptorManager().allocate_descriptor_set(0);
-	DescriptorSet& computeSet = context.descriptorManager().allocate_descriptor_set(1);
+	context.descriptorManager().init_descriptor_pool(3);
+	DescriptorSet& rtImageSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_IMAGE_SET_LAYOUT", "RAY_TRACING_IMAGE_SET");
+	DescriptorSet& rtUniformSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_UNIFORM_SET_LAYOUT", "RAY_TRACING_UNIFORM_SET");
+	DescriptorSet& computeToneMappingSet = context.descriptorManager().allocate_descriptor_set("COMPUTE_TONE_MAPPING_SET_LAYOUT","COMPUTE_TONE_MAPPING_SET");
 
 
-	context.descriptorManager().descriptor_write(0, BINDING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, renderTarget);
-	context.descriptorManager().descriptor_write(0, BINDING_TLAS, accelerationStructure);
-	context.descriptorManager().descriptor_write(0, BINDING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vertexBuffer);
-	context.descriptorManager().descriptor_write(0, BINDING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, indexBuffer);
-	context.descriptorManager().descriptor_write(0, BINDING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, materialBuffer);
-	context.descriptorManager().descriptor_write(0, BINDING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, geometryBuffer);
+	context.descriptorManager().descriptor_write("RAY_TRACING_IMAGE_SET", BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, renderTarget);
+
+	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_TLAS, accelerationStructure);
+	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vertexBuffer);
+	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, indexBuffer);
+	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, materialBuffer);
+	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, geometryBuffer);
 
 
-	context.descriptorManager().descriptor_write(1, BINDING_COMPUTE_FORMAT_TRANSFER_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, renderTarget);
-	context.descriptorManager().descriptor_write(1, BINDING_COMPUTE_FORMAT_TRANSFER_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, ldrImage);
+	context.descriptorManager().descriptor_write("COMPUTE_TONE_MAPPING_SET", BINDING_COMPUTE_TONE_MAPPING_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, renderTarget);
+	context.descriptorManager().descriptor_write("COMPUTE_TONE_MAPPING_SET", BINDING_COMPUTE_TONE_MAPPING_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, ldrImage);
 
 	context.descriptorManager().update_descriptor_set();
 
 	// Create Pipeline
-	context.rtPipeline().create_pipeline(context.descriptorManager().get_descriptor_set_layouts({0}));
+	context.rtPipeline().create_pipeline(context.descriptorManager().get_descriptor_set_layouts({ "RAY_TRACING_IMAGE_SET_LAYOUT","RAY_TRACING_UNIFORM_SET_LAYOUT" }));
 
-	ComputePipeline ftPipeline(context);
-	ftPipeline.create_pipeline("./shader/format_trans.comp.spv", context.descriptorManager().get_descriptor_set_layouts({ 1 }), sizeof(FormatTransPushConstants));
+	ComputePipeline tmPipeline(context);
+	tmPipeline.create_pipeline("./shader/tone_mapping.comp.spv", context.descriptorManager().get_descriptor_set_layouts({ "COMPUTE_TONE_MAPPING_SET_LAYOUT" }), sizeof(ToneMappingPushConstants));
 
 	// Build Shader Binding Tbale & Get Shader Group Regions
 	context.shaderManager().build_shader_binding_table(context.rtPipeline());
@@ -205,11 +209,14 @@ int main() {
 
 	renderer.register_image("renderTarget", renderTarget);
 	renderer.register_image("ldrImage", ldrImage);
-	renderer.register_descriptor_set("rayTracingSet", rayTracingSet);
-	renderer.register_descriptor_set("computeSet", computeSet);
-	renderer.register_compute_pipeline("ftPipeline", ftPipeline);
+	renderer.register_descriptor_set("rtImageSet", rtImageSet);
+	renderer.register_descriptor_set("rtUniformSet", rtUniformSet);
+	renderer.register_descriptor_set("computeToneMappingSet", computeToneMappingSet);
+	renderer.register_compute_pipeline("tmPipeline", tmPipeline);
+	
 
-	renderer.render();
+	//renderer.offline_render("result.hdr");
+	renderer.realtime_render();
 
 	vkDeviceWaitIdle(context);
 

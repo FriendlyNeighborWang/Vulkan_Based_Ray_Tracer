@@ -8,9 +8,11 @@
 #include "vk_layer/VkMemoryAllocator.h"
 
 struct Material {
-	Vector4f baseColor{ 1.0f };
+	Vector4f albedo{ 1.0f };
+	Vector3f emission{ 0.0f };
 	Float metallic{ 0.0f };
 	Float roughness{ 1.0f };
+	Float _padding[3]{ 0.0f };
 };
 
 struct Geometry {

@@ -203,12 +203,15 @@
     <None Include="resource\cornell_box\scene.gltf">
       <Filter>resource\cornell box</Filter>
     </None>
+    <None Include="shader\material_CookTorrance.glslh">
+      <Filter>shader\include</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shader\closestHitCommon.glslh">
       <Filter>shader\include</Filter>
     </CustomBuild>
-    <CustomBuild Include="shader\material_diffuse.rchit">
+    <CustomBuild Include="shader\material_CookTorrance.rchit">
       <Filter>shader</Filter>
     </CustomBuild>
     <CustomBuild Include="shader\raytrace.rgen">
@@ -217,7 +220,7 @@
     <CustomBuild Include="shader\raytrace.rmiss">
       <Filter>shader</Filter>
     </CustomBuild>
-    <CustomBuild Include="shader\format_trans.comp">
+    <CustomBuild Include="shader\tone_mapping.comp">
       <Filter>shader</Filter>
     </CustomBuild>
   </ItemGroup>

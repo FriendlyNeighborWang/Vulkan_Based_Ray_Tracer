@@ -8,6 +8,38 @@
 #include <limits>
 
 SwapChain::SwapChain(Context& context, GLFWwindow* window) : _context(context) {
+	recreate(window);
+}
+
+SwapChain::~SwapChain() {
+	if (!_views.empty()) {
+		for (auto imageView : _views)
+			vkDestroyImageView(_context, imageView, nullptr);
+	}
+	
+	if (swapChain != VK_NULL_HANDLE)
+		vkDestroySwapchainKHR(_context, swapChain, nullptr);
+}
+
+void SwapChain::recreate(GLFWwindow* window) {
+	vkDeviceWaitIdle(_context);
+
+	//clean
+	if (!_views.empty()) {
+		for (auto imageView : _views)
+			vkDestroyImageView(_context, imageView, nullptr);
+	}
+
+	VkSwapchainKHR last_swapchain = VK_NULL_HANDLE;
+	if (swapChain != VK_NULL_HANDLE)
+		last_swapchain = swapChain;
+
+	_views.clear();
+	_images.clear();
+	_layouts.clear();
+
+	// Create
+
 	SwapChainSupportDetails swapChainSupport = get_swapchain_support_details(_context, _context.device_surface());
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -45,11 +77,14 @@ SwapChain::SwapChain(Context& context, GLFWwindow* window) : _context(context) {
 	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	createInfo.presentMode = presentMode;
 	createInfo.clipped = VK_TRUE;
-	createInfo.oldSwapchain = VK_NULL_HANDLE;
+	createInfo.oldSwapchain = last_swapchain;
 
 	if (vkCreateSwapchainKHR(_context, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
 		throw std::runtime_error("SwapChain:: Failed to create swapchain");
 	}
+	
+	if (last_swapchain != VK_NULL_HANDLE)
+		vkDestroySwapchainKHR(_context, last_swapchain, nullptr);
 
 	// Get SwapChain Image & Create ImageView
 	vkGetSwapchainImagesKHR(_context, swapChain, &imageCount, nullptr);
@@ -65,16 +100,8 @@ SwapChain::SwapChain(Context& context, GLFWwindow* window) : _context(context) {
 		_views[i] = Image::create_imageview(_context, _images[i], _format, VK_IMAGE_ASPECT_COLOR_BIT);
 		_layouts[i] = VK_IMAGE_LAYOUT_UNDEFINED;
 	}
-
-	// ≥ı ºªØ image layout transition
 }
 
-SwapChain::~SwapChain() {
-	for (auto imageView : _views)
-		vkDestroyImageView(_context, imageView, nullptr);
-
-	vkDestroySwapchainKHR(_context, swapChain, nullptr);
-}
 
 
 VkResult SwapChain::acquire_next_image(VkSemaphore semaphore, VkFence fence, uint32_t* imageIndex, uint32_t timeout) {
@@ -116,7 +143,7 @@ void SwapChain::image_layout_transtion(uint32_t idx, CommandBuffer& cmdBuffer, V
 	_layouts[idx] = targetLayout;
 }
 
-void SwapChain::present(uint32_t imageIndex, const pstd::vector<VkSemaphore>& waitSemaphores) {
+VkResult SwapChain::present(uint32_t imageIndex, const pstd::vector<VkSemaphore>& waitSemaphores) {
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = waitSemaphores.size();
@@ -125,10 +152,7 @@ void SwapChain::present(uint32_t imageIndex, const pstd::vector<VkSemaphore>& wa
 	presentInfo.pSwapchains = &swapChain;
 	presentInfo.pImageIndices = &imageIndex;
 
-	VkResult result = vkQueuePresentKHR(_context.present_queue(), &presentInfo);
-
-	if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-		throw std::runtime_error("SwapChain::Failed to present");
+	return vkQueuePresentKHR(_context.present_queue(), &presentInfo);
 }
 
 
