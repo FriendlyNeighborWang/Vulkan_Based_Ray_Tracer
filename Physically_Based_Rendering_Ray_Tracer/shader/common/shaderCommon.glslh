@@ -1,0 +1,76 @@
+#ifndef GLSL_SHADER_COMMON_H
+#define GLSL_SHADER_COMMON_H
+
+#extension GL_GOOGLE_include_directive : require
+#include "util.glslh"
+
+struct PassableInfo{
+	vec3 radiance;
+	vec3 throughput;
+	vec3 rayOrigin;
+	vec3 rayDirection;
+	uint rngState;
+	bool if_DI;
+	bool rayHitSky;
+};
+
+struct ShadowRayInfo{
+	float targetT;
+	bool shadowBlocked;
+};
+
+
+struct GeometryStruct {
+	uint materialIndex;
+	uint firstVertex;
+	uint firstIndex;
+	uint primitiveCount;
+};
+
+struct Material{
+    uint materialType;
+	vec3 emission;
+	vec4 albedo;
+	float metallic;
+	float roughness;
+	vec2 padding;
+};
+
+struct MaterialSample{
+	vec3 direction;
+	float pdf;
+};
+
+struct Light{
+	uint lightType;
+	vec3 emission;
+	float power;
+
+	vec3 position;	
+	vec3 direction;
+	float range;		
+
+	float innerConeAngle; 
+	float outerConeAngle;
+
+	uint geometryIndex;	
+	float area;
+	mat4 transform;
+};
+
+struct LightSample{
+	uint lightIdx;
+	vec3 pos;
+	vec3 normal;
+	float pdf;
+};
+
+
+struct HitInfo{
+	vec3 objectPosition;
+	vec3 worldPosition;
+	vec3 worldNormal;
+	Material material;
+};
+
+#endif // !GLSL_SHADER_COMMON_H

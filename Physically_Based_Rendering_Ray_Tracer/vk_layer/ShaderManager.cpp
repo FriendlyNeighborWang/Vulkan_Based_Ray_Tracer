@@ -53,6 +53,20 @@ void ShaderManager::init() {
 	vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(_context, "vkGetRayTracingShaderGroupHandlesKHR"));
 }
 
+void ShaderManager::auto_import_shader_file(const std::string& directory) {
+	auto shader_spv_list = FileOp::findFilesWithPattern(directory, ".spv");
+	
+	for (const auto& spv : shader_spv_list) {
+		if (spv.find(".rgen.") != std::string::npos)
+			add_raygen_shader(spv);
+		else if (spv.find(".rmiss.") != std::string::npos)
+			add_miss_shader(spv);
+		else if (spv.find(".rchit") != std::string::npos)
+			add_hit_group_shader(spv);
+	}
+	
+}
+
 void ShaderManager::add_raygen_shader(const std::string& path) {
 	ShaderModule shaderModule = create_shader_module(path);
 

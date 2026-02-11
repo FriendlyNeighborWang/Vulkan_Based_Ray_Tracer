@@ -2,7 +2,7 @@
 #define GLSL_MATERIAL_COOK_TORRANCE_H
 
 #extension GL_GOOGLE_include_directive : require
-#include "shaderCommon.glslh"
+#include "../common/shaderCommon.glslh"
 
 // ============== Normal Disutribution Function ==============
 float D_TRGGX(float NdotH, float alpha){
@@ -28,31 +28,6 @@ vec3 F_Schlick(float HdotV, vec3 F0){
 	return F0 + (1.0 - F0) * pow(1.0 - HdotV, 5.0);
 }
 
-vec3 evaluateBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metallic, float roughness){
-	vec3 H = normalize(V + L);
-
-	float NdotV = max(dot(N, V), 0.0);
-	float NdotL = max(dot(N, L), 0.0);
-	float NdotH = max(dot(N, H), 0.0);
-	float HdotV = max(dot(H, V), 0.0);
-
-	// Specular
-	vec3 F0 = mix(vec3(0.04), albedo, metallic);
-
-	float alpha = roughness * roughness;
-
-	float D = D_TRGGX(NdotH, alpha);
-	float G = G_Smith(NdotV, NdotL, roughness);
-	vec3 F = F_Schlick(HdotV, F0);
-
-	vec3 specular = (D * G * F) / max(4 * NdotV * NdotL, 0.0001);
-
-	// Diffuse
-	vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
-	vec3 diffuse = kD * albedo / PI;
-
-	return diffuse + specular;
-}
 
 // ============== GGX Importance Sampling ==============
 
@@ -93,49 +68,75 @@ vec3 sampleCosineHemisphere(vec3 N, inout uint rngState){
 	return normalize(T * H_local.x  + B * H_local.y + N * H_local.z);
 }
 
-vec3 sampleBRDF(vec3 N, vec3 V, vec3 albedo, float metallic, float roughness, inout uint rngState, out vec3 weight){
+
+
+
+MaterialSample sampleCookTorranceBRDF(vec3 N, vec3 V, vec3 albedo, float metallic, float roughness, inout uint rngState){
+	MaterialSample result;
+
+
+	vec3 F0 = mix(vec3(0.04), albedo, metallic);
+	float alpha = roughness * roughness;
 	float specularProbability = 0.5 + 0.5 * metallic;
 
-	vec3 L;
-	vec3 F0 = mix(vec3(0.04), albedo, metallic);
+	vec3 L, H;
 
 	if(stepAndOutputRNGFloat(rngState) < specularProbability){
-		// Sampling specular
-		vec3 H = sampleGGX(N, roughness, rngState);
+		H = sampleGGX(N, roughness, rngState);
+
 		L = reflect(-V, H);
-		if(dot(L, N) <= 0.0){
-			weight = vec3(0.0);
-			return L;
+
+		if(dot(N, L) <= 0.0){
+			result.pdf = 0.0;
+			result.direction = V;
+			return result;
 		}
-
-		float NdotV = max(dot(N, V), 0.0);
-		float NdotL = max(dot(N, L), 0.0);
-		float NdotH = max(dot(N, H), 0.0);
-		float VdotH = max(dot(V, H), 0.0);
-
-		float alpha = roughness * roughness;
-
-		vec3 F = F_Schlick(VdotH, F0);
-		float G = G_Smith(NdotV, NdotL, roughness);
-
-		weight = F * G * VdotH / max(NdotV * NdotH, 0.0001);
-		weight /= specularProbability;
 	}else{
 		L = sampleCosineHemisphere(N, rngState);
+		H = normalize(V + L);
 
-		float NdotL = max(dot(N, L), 0.0);
-		vec3 H = normalize(V + L);
-		float VdotH = max(dot(V, H), 0.0);
-
-		vec3 F = F_Schlick(VdotH, F0);
-		vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
-
-		weight = kD * albedo;
-		weight /= (1.0 - specularProbability);
-
+		if(dot(N, L) <= 0.0){
+			result.pdf = 0.0;
+			result.direction = V;
+			return result;
+		}
 	}
 
-	return L;
+	result.direction = L;
+
+	float NdotL = max(dot(N, L), 0.0);
+	float NdotH = max(dot(N, H), 0.0);
+	float HdotV = max(dot(H, V), 0.0);
+
+	float D = D_TRGGX(NdotH, alpha);
+
+	float pdfSpecular = D * NdotH / (4.0 * max(HdotV, 0.001));
+	float pdfDiffuse = NdotL / PI;
+
+	result.pdf = specularProbability * pdfSpecular + (1.0 - specularProbability) * pdfDiffuse;
+
+	return result;
+}
+
+vec3 evaluateCookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metallic, float roughness){
+	vec3 F0 = mix(vec3(0.04), albedo, metallic);
+	float alpha = roughness * roughness;
+	vec3 H = normalize(V + L);
+
+	float NdotV = max(dot(N, V), 0.0);
+	float NdotL = max(dot(N, L), 0.0);
+	float NdotH = max(dot(N, H), 0.0);
+	float HdotV = max(dot(H, V), 0.0);
+
+	float D = D_TRGGX(NdotH, alpha);
+	float G = G_Smith(NdotV, NdotL, roughness);
+	vec3 F = F_Schlick(HdotV, F0);
+
+	vec3 specular = (D * G * F) / max(4 * NdotV * NdotL, 0.001);
+	vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+	vec3 diffuse = kD * albedo / PI;
+
+	return specular + diffuse;
 }
 
 

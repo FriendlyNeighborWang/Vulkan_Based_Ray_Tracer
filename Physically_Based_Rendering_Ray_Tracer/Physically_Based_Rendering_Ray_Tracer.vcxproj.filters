@@ -28,9 +28,6 @@
     <Filter Include="shader">
       <UniqueIdentifier>{f747eba1-0ba5-44d7-81ce-137016df88d4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="shader\include">
-      <UniqueIdentifier>{248fc4cc-b817-4bba-8836-52c27770d27d}</UniqueIdentifier>
-    </Filter>
     <Filter Include="deps\stb">
       <UniqueIdentifier>{a0e055db-f165-49e7-9360-023e699cd1a4}</UniqueIdentifier>
     </Filter>
@@ -39,6 +36,18 @@
     </Filter>
     <Filter Include="deps\tiny_gltf">
       <UniqueIdentifier>{51a2a742-fd52-4c6d-8090-59b64a3c1066}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader\common">
+      <UniqueIdentifier>{248fc4cc-b817-4bba-8836-52c27770d27d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader\material">
+      <UniqueIdentifier>{505469f3-171b-4980-bd41-bb6defc54969}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader\light">
+      <UniqueIdentifier>{b4bab970-d861-4805-8603-8c608c081ba0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader\sampling">
+      <UniqueIdentifier>{a6919f68-5391-4f83-aa86-c9ba82ce86e2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -113,9 +122,6 @@
     </ClInclude>
     <ClInclude Include="base\shader_base.h">
       <Filter>base</Filter>
-    </ClInclude>
-    <ClInclude Include="shader\shaderCommon.glslh">
-      <Filter>shader\include</Filter>
     </ClInclude>
     <ClInclude Include="deps\stb\stb_image_write.h">
       <Filter>deps\stb</Filter>
@@ -203,24 +209,45 @@
     <None Include="resource\cornell_box\scene.gltf">
       <Filter>resource\cornell box</Filter>
     </None>
-    <None Include="shader\material_CookTorrance.glslh">
-      <Filter>shader\include</Filter>
+    <None Include="shader\common\shaderCommon.glslh">
+      <Filter>shader\common</Filter>
+    </None>
+    <None Include="shader\common\util.glslh">
+      <Filter>shader\common</Filter>
+    </None>
+    <None Include="shader\common\closestHitCommon.glslh">
+      <Filter>shader\common</Filter>
+    </None>
+    <None Include="shader\material\material_CookTorrance.glslh">
+      <Filter>shader\material</Filter>
+    </None>
+    <None Include="shader\material\material_interface.glslh">
+      <Filter>shader\material</Filter>
+    </None>
+    <None Include="shader\light\light_interface.glslh">
+      <Filter>shader\light</Filter>
+    </None>
+    <None Include="shader\sampling\NEE.glslh">
+      <Filter>shader\sampling</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="shader\closestHitCommon.glslh">
-      <Filter>shader\include</Filter>
-    </CustomBuild>
-    <CustomBuild Include="shader\material_CookTorrance.rchit">
+    <CustomBuild Include="shader\rayGen.rgen">
       <Filter>shader</Filter>
     </CustomBuild>
-    <CustomBuild Include="shader\raytrace.rgen">
-      <Filter>shader</Filter>
-    </CustomBuild>
-    <CustomBuild Include="shader\raytrace.rmiss">
+    <CustomBuild Include="shader\rayMiss.rmiss">
       <Filter>shader</Filter>
     </CustomBuild>
     <CustomBuild Include="shader\tone_mapping.comp">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\closestHit.rchit">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\shadowRayHit.rchit">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\shadowRayMiss.rmiss">
       <Filter>shader</Filter>
     </CustomBuild>
   </ItemGroup>

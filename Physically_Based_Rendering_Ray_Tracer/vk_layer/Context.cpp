@@ -95,16 +95,15 @@ void Context::create_instance() {
 		throw std::runtime_error("Context:: Instance extensions are not available");
 
 	// debug_printf
-	VkValidationFeatureEnableEXT enableFeatures[] = {
-		VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
-	};
+	pstd::vector<VkValidationFeatureEnableEXT> enableFeatures;
+	enableFeatures.push_back(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
 
 	VkValidationFeaturesEXT validationFeatures{};
 	if (if_enable_validation_layers) {
 		validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
 		validationFeatures.pNext = nullptr;
-		validationFeatures.enabledValidationFeatureCount = 1;
-		validationFeatures.pEnabledValidationFeatures = enableFeatures;
+		validationFeatures.enabledValidationFeatureCount = static_cast<uint32_t>(enableFeatures.size());
+		validationFeatures.pEnabledValidationFeatures = enableFeatures.data();
 		validationFeatures.disabledValidationFeatureCount = 0;
 		validationFeatures.pDisabledValidationFeatures = nullptr;
 	}

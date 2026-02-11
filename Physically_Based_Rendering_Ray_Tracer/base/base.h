@@ -48,6 +48,7 @@ struct Normal;
 
 // Scene
 struct Material;
+struct Light;
 struct Geometry;
 struct Mesh;
 struct MeshInstance;

@@ -1,0 +1,44 @@
+#ifndef GLSL_MATERIAL_INTERFACE_H
+#define GLSL_MATERIAL_INTERFACE_H
+
+#extension GL_GOOGLE_include_directive : require
+#include "material_CookTorrance.glslh"
+
+// shader管理思路，我们不只使用一套material，虽然都可以被建模成Principle BRDF，但是不透明、半透明、透明材质可以被分开建模，
+// 然后相关材质可以被存储在不透明的Material Buffer，这样就可以用一个custom index在不同material buffer中索引来表示出不同的material
+
+MaterialSample sampleMaterial(vec3 N, vec3 V, Material material,  inout uint rngState){
+	
+	MaterialSample result;
+	
+	switch(material.materialType){
+	case MATERIAL_TYPE_COOK_TORRANCE:
+		result = sampleCookTorranceBRDF(N, V, material.albedo.rgb, material.metallic, material.roughness, rngState);
+		break;
+
+	default:
+		result = sampleCookTorranceBRDF(N, V, material.albedo.rgb, material.metallic, material.roughness, rngState);
+		break;
+	}
+
+
+	return result;
+}
+
+vec3 evaluateMaterial(vec3 N, vec3 V, vec3 L, Material material){
+	vec3 result;
+
+	switch(material.materialType){
+	case MATERIAL_TYPE_COOK_TORRANCE:
+		result = evaluateCookTorranceBRDF(N, V, L, material.albedo.rgb, material.metallic, material.roughness);
+		break;
+
+	default:
+		result = evaluateCookTorranceBRDF(N, V, L, material.albedo.rgb, material.metallic, material.roughness);
+		break;
+	}
+
+	return result;
+}
+
+#endif // !#ifndef GLSL_MATERIAL_INTERFACE_H

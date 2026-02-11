@@ -11,7 +11,7 @@
 
 class Renderer {
 public:
-	Renderer(Context& context, Window& window, SwapChain& swapChain);
+	Renderer(Context& context, Window& window, SwapChain& swapChain, Scene& scene);
 
 	void register_image(std::string name, Image& image);
 
@@ -26,6 +26,7 @@ private:
 
 	void recreateSwapChain();
 
+	void updateDynamicSceneInfo();
 
 	// Rendering Info
 	pstd::vector<VkStridedDeviceAddressRegionKHR> groupRegions;
@@ -46,7 +47,7 @@ private:
 	// Reference
 	Window& window;
 	SwapChain& swapChain;
-
+	Scene& scene;
 	Context& _context;
 
 	// Else

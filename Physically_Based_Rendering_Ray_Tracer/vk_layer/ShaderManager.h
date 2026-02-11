@@ -50,6 +50,8 @@ public:
 
 	ShaderModule create_shader_module(const std::string& path) const;
 
+	void auto_import_shader_file(const std::string& directory);
+
 	void add_raygen_shader(const std::string& path);
 	void add_miss_shader(const std::string& path);
 	void add_hit_group_shader(const std::string& closestHitPath, const std::string& anyHitPath = "", const std::string& intersectionPath = "");

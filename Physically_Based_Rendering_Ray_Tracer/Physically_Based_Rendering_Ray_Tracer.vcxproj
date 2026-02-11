@@ -142,8 +142,6 @@
     <ClInclude Include="graphics\Renderer.h" />
     <ClInclude Include="graphics\SceneLoader.h" />
     <ClInclude Include="graphics\Window.h" />
-    <CustomBuild Include="shader\closestHitCommon.glslh" />
-    <ClInclude Include="shader\shaderCommon.glslh" />
     <ClInclude Include="util\FileOp.h" />
     <ClInclude Include="util\log.h" />
     <ClInclude Include="util\math.h" />
@@ -189,36 +187,56 @@
     <ClCompile Include="vk_layer\VkMemoryAllocator.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="shader\material_CookTorrance.rchit">
+    <CustomBuild Include="shader\closestHit.rchit">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe -g -Od --target-env vulkan1.3 -o "$(ProjectDir)shader\spv\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\%(Filename)%(Extension).spv</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
-    <CustomBuild Include="shader\raytrace.rgen">
+    <CustomBuild Include="shader\rayGen.rgen">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe -g -Od --target-env vulkan1.3 -o "$(ProjectDir)shader\spv\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\%(Filename)%(Extension).spv</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
-    <CustomBuild Include="shader\raytrace.rmiss">
+    <CustomBuild Include="shader\rayMiss.rmiss">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe -g -Od --target-env vulkan1.3 -o "$(ProjectDir)shader\spv\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\%(Filename)%(Extension).spv</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
     <CustomBuild Include="shader\tone_mapping.comp">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe --target-env vulkan1.3 -o "$(ProjectDir)shader\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe -g -Od --target-env vulkan1.3 -o "$(ProjectDir)shader\spv\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\%(Filename)%(Extension).spv</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
     <None Include="resource\cornell_box\scene.gltf" />
-    <None Include="shader\material_CookTorrance.glslh" />
+    <None Include="shader\common\closestHitCommon.glslh" />
+    <None Include="shader\common\shaderCommon.glslh" />
+    <None Include="shader\common\util.glslh" />
+    <None Include="shader\light\light_interface.glslh" />
+    <None Include="shader\material\material_CookTorrance.glslh" />
+    <None Include="shader\material\material_interface.glslh" />
+    <None Include="shader\sampling\NEE.glslh" />
+    <CustomBuild Include="shader\shadowRayHit.rchit">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe -g -Od --target-env vulkan1.3 -o "$(ProjectDir)shader\spv\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+    <CustomBuild Include="shader\shadowRayMiss.rmiss">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe -g -Od --target-env vulkan1.3 -o "$(ProjectDir)shader\spv\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
     <None Include="util\Vec.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

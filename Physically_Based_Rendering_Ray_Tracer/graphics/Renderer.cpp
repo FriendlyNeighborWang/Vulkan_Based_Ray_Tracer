@@ -3,7 +3,7 @@
 
 #include "stb_image_write.h"
 
-Renderer::Renderer(Context& context, Window& window, SwapChain& swapChain) :_context(context), window(window), swapChain(swapChain){
+Renderer::Renderer(Context& context, Window& window, SwapChain& swapChain, Scene& scene) :_context(context), window(window), swapChain(swapChain), scene(scene){
 	// Load Dynamic Function
 	vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(context, "vkCmdTraceRaysKHR"));
 
@@ -77,16 +77,21 @@ void Renderer::recreateSwapChain() {
 	_context.descriptorManager().update_descriptor_set();
 }
 
+void Renderer::updateDynamicSceneInfo() {
+	scene.update_dynamic_scene_info();
+}
+
 void Renderer::realtime_render() {
 	// Resources Set
 	Image& renderTarget = *(images.find("renderTarget")->second);
 	Image& ldrImage = *(images.find("ldrImage")->second);
 
 	VkDescriptorSet rtImageSet = *(descriptorSets.find("rtImageSet")->second);
+	VkDescriptorSet rtDynamicSet = *(descriptorSets.find("rtDynamicSet")->second);
 	VkDescriptorSet rtUniformSet = *(descriptorSets.find("rtUniformSet")->second);
 	VkDescriptorSet computeToneMappingSet = *(descriptorSets.find("computeToneMappingSet")->second);
-
-	VkDescriptorSet render_sets[] = { rtImageSet, rtUniformSet };
+	
+	VkDescriptorSet render_sets[] = { rtDynamicSet, rtImageSet, rtUniformSet };
 
 	PushConstants pushConstants;
 	ToneMappingPushConstants tmPushConstants;
@@ -140,15 +145,16 @@ void Renderer::realtime_render() {
 		// Bind Pipeline & Descriptor Set
 		vkCmdBindPipeline(cmdBuffers[currentFrame], VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _context.rtPipeline());
 
+		updateDynamicSceneInfo();
 		vkCmdBindDescriptorSets(
 			cmdBuffers[currentFrame],
 			VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
 			_context.rtPipeline().pipeline_layout(),
 			0,
-			2, render_sets,
+			3, render_sets,
 			0, nullptr
 		);
-
+		
 
 		pushConstants.sample_batch = 0;
 
@@ -308,9 +314,10 @@ void Renderer::offline_render(const std::string& name) {
 	// Resources
 	Image& renderTarget = *(images.find("renderTarget")->second);
 
+	VkDescriptorSet rtDynamicSet = *(descriptorSets.find("rtDynamicSet")->second);
 	VkDescriptorSet rtImageSet = *(descriptorSets.find("rtImageSet")->second);
 	VkDescriptorSet rtUniformSet = *(descriptorSets.find("rtUniformSet")->second);
-	VkDescriptorSet sets[2] = { rtImageSet, rtUniformSet };
+	VkDescriptorSet sets[] = { rtDynamicSet, rtImageSet,  rtUniformSet };
 
 	PushConstants pushConstants;
 
@@ -339,13 +346,13 @@ void Renderer::offline_render(const std::string& name) {
 		_context.rtPipeline()
 	);
 	
-
+	updateDynamicSceneInfo();
 	vkCmdBindDescriptorSets(
 		cmdBuffer,
 		VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
 		_context.rtPipeline().pipeline_layout(),
 		0,
-		2, sets,
+		3, sets,
 		0, nullptr
 	);
 

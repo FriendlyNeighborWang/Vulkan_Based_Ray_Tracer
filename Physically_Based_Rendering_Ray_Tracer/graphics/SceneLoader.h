@@ -51,8 +51,11 @@ public:
 			processNode(model, model.nodes[scene.nodes[i]], rootTransform, outScene);
 		}
 
+		loadLights(model, outScene);
+
 		LOG_STREAM("SceneLoader") << " Materials: " << outScene.materials.size() << std::endl;
 		LOG_STREAM("SceneLoader") << " Meshes (BLAS): " << outScene.materials.size() << std::endl;
+		LOG_STREAM("SceneLoader") << " Lights: " << outScene.lights.size() << std::endl;
 		LOG_STREAM("SceneLoader") << " Instances (TLAS): " << outScene.instances.size() << std::endl;
 
 		return outScene;
@@ -69,6 +72,7 @@ private:
 		
 		for (const auto& mat : model.materials) {
 			Material material{};
+			material.materialType = MATERIAL_TYPE_COOK_TORRANCE;
 
 			if (mat.values.find("baseColorFactor") != mat.values.end()) {
 				const auto& color = mat.values.at("baseColorFactor").ColorFactor();
@@ -197,6 +201,35 @@ private:
 		}
 	}
 
+	void loadLights(const Model& model, Scene& scene) {
+		uint32_t globalGeometryIndex = 0;
+
+		for (const auto& instance : scene.instances) {
+			glm::mat4 instance_transform = instance.transform;
+
+			for (const auto& geo : scene.meshes[instance.meshIndex].geometries) {
+				const Material& mat = scene.materials[geo.materialIndex];
+
+				if (mat.emission.norm() > 0.001f) {
+					Light light{};
+					light.lightType = LIGHT_TYPE_MESH;
+					light.emission = mat.emission;
+					light.geometryIndex = globalGeometryIndex;
+					light.transform = instance_transform;
+					light.area = computeMeshLightArea(scene, scene.meshes[instance.meshIndex], geo, light);
+					light.power = computeLightPower(light);
+
+					scene.lights.push_back(light);
+					scene.staticInfo.lightCount++;
+					scene.staticInfo.totalLightPower += light.power;
+				}
+				++globalGeometryIndex;
+			}
+
+		}
+
+	}
+
 	void processNode(const Model& model, const Node& node, const glm::mat4& parentTransform, Scene& scene) {
 		glm::mat4 localTransform(1.0f);
 
@@ -284,11 +317,45 @@ private:
 		return m;
 	}
 
+	float computeMeshLightArea(const Scene& scene, const Mesh& mesh, const Geometry& geo, const Light& light) const{
+		float totalArea = 0.0f;
+		for (uint32_t triIdx = 0; triIdx < geo.primitiveCount; ++triIdx) {
+			uint32_t baseIdx = mesh.firstIndex + geo.firstIndex + triIdx * 3;
+			uint32_t i0 = scene.indices[baseIdx + 0];
+			uint32_t i1 = scene.indices[baseIdx + 1];
+			uint32_t i2 = scene.indices[baseIdx + 2];
+
+			Vector3f v0_local = scene.vertices[mesh.firstVertex + geo.firstVertex + i0]; 
+			Vector3f v1_local = scene.vertices[mesh.firstVertex + geo.firstVertex + i1];
+			Vector3f v2_local = scene.vertices[mesh.firstVertex + geo.firstVertex + i2];
+
+			glm::vec4 p0 = light.transform * glm::vec4(v0_local.data, 1.0f);
+			glm::vec4 p1 = light.transform * glm::vec4(v1_local.data, 1.0f);
+			glm::vec4 p2 = light.transform * glm::vec4(v2_local.data, 1.0f);
+
+			Vector3f v0_world(p0.x, p0.y, p0.z);
+			Vector3f v1_world(p1.x, p1.y, p1.z);
+			Vector3f v2_world(p2.x, p2.y, p2.z);
+
+			Vector3f e1 = v1_world - v0_world;
+			Vector3f e2 = v2_world - v0_world;
+
+			totalArea += 0.5f * Cross(e1, e2).norm();
+		}
+		return totalArea;
+	}
+
+	float computeLightPower(const Light& light) const {
+		const float PI = 3.1415926;
+
+		float luminance = 0.2126 * light.emission.x() + 0.7152 * light.emission.y() + 0.0722 * light.emission.z();
+
+		return light.area * PI * luminance;
+	}
+
 };
 
 	
-
-
 
 
 

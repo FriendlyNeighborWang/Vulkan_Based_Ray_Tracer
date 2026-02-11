@@ -170,8 +170,8 @@ TLAS::TLAS(ASManager* address, Scene& scene):pasm(address) {
 		blas[i] = BLAS(
 			address,
 			scene.meshes[i],
-			scene.get_vertex_buffer(pasm->_context.memAllocator()),
-			scene.get_index_buffer(pasm->_context.memAllocator())
+			scene.get_vertex_buffer(pasm->_context),
+			scene.get_index_buffer(pasm->_context)
 		);
 	}
 

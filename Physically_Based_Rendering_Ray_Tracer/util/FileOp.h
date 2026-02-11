@@ -5,6 +5,7 @@
 #include "util/pstd.h"
 
 #include <fstream>
+#include <filesystem>
 
 class FileOp {
 public:
@@ -22,6 +23,35 @@ public:
 		file.close();
 
 		return buffer;
+	}
+
+	static pstd::vector<std::string> findFilesWithPattern(const std::string& directory, const std::string& pattern, bool recursive = true) {
+		pstd::vector<std::string> results;
+
+		namespace fs = std::filesystem;
+
+		if (!fs::exists(directory) || !fs::is_directory(directory)) {
+			return results;
+		}
+
+		auto searchDir = [&](auto&& iterator) {
+			for (const auto& entry : iterator) {
+				if (entry.is_regular_file()) {
+					std::string filename = entry.path().filename().string();
+					if (filename.find(pattern) != std::string::npos)
+						results.push_back(entry.path().string());
+				}
+			}
+			};
+
+		if (recursive) {
+			searchDir(fs::recursive_directory_iterator(directory));
+		}
+		else {
+			searchDir(fs::directory_iterator(directory));
+		}
+
+		return results;
 	}
 };
 

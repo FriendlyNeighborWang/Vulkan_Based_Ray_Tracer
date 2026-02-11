@@ -3,10 +3,18 @@
 
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_scalar_block_layout : require
-#include "../base/shader_base.h"
-#include "shaderCommon.glslh"
+#include "../../base/shader_base.h"
+#include "./shaderCommon.glslh"
 
 hitAttributeEXT vec2 attributes;
+
+layout(binding = BINDING_RAY_TRACING_SCENE_STATIC_INFO, set = RAY_TRACING_UNIFORM_SET) uniform SceneStaticInfo{
+	uint lightCount;
+	float totalLightPower;
+	vec2 padding;
+} staticInfo;
+
+layout(binding = BINDING_RAY_TRACING_TLAS, set = RAY_TRACING_UNIFORM_SET) uniform accelerationStructureEXT tlas;
 
 layout(binding = BINDING_RAY_TRACING_VERTICES, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Vertices{
 	vec3 vertices[];
@@ -16,37 +24,24 @@ layout(binding = BINDING_RAY_TRACING_INDICES, set = RAY_TRACING_UNIFORM_SET, sca
 	uint indices[];
 };
 
-struct Material{
-	vec4 albedo;
-	vec3 emission;
-	float metallic;
-	float roughness;
-	vec3 padding;
-};
 
 layout(binding = BINDING_RAY_TRACING_MATERIAL, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Materials{
 	Material materials[];
 };
 
-struct GeometryStruct {
-		uint materialIndex;
-		uint firstVertex;
-		uint firstIndex;
-		uint _padding;
-	};
-
 layout(binding = BINDING_RAY_TRACING_GEOMETRY, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Geometrys{
 	GeometryStruct geometries[];
 };
 
-layout(location = 0) rayPayloadInEXT PassableInfo pld;
-
-struct HitInfo{
-	vec3 objectPosition;
-	vec3 worldPosition;
-	vec3 worldNormal;
-	Material material;
+layout(binding = BINDING_RAY_TRACING_LIGHT, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Lights{
+	Light lights[];
 };
+
+
+layout(location = 0) rayPayloadInEXT PassableInfo pld;
+layout(location = 1) rayPayloadEXT ShadowRayInfo srd;
+
+
 
 GeometryStruct getCurrentGeometry(){
 	uint globalGeometryIndex = gl_InstanceCustomIndexEXT + gl_GeometryIndexEXT;
@@ -94,23 +89,6 @@ HitInfo getObjectHitInfo(){
 	return result;
 }
 
-vec3 offsetPositionAlongNormal(vec3 worldPosition, vec3 normal){
-	const float int_scale = 256.0f;
-	const ivec3 of_i = ivec3(int_scale * normal);
 
-	const vec3 p_i = vec3(
-		intBitsToFloat(floatBitsToInt(worldPosition.x)+((worldPosition.x < 0) ? -of_i.x : of_i.x)),
-		intBitsToFloat(floatBitsToInt(worldPosition.y)+((worldPosition.y < 0) ? -of_i.y : of_i.y)),
-		intBitsToFloat(floatBitsToInt(worldPosition.z)+((worldPosition.z < 0) ? -of_i.z : of_i.z))
-	);
-
-	const float origin = 1.0f / 32.0f;
-	const float floatScale = 1.0f / 65536.0f;
-	return vec3(
-		abs(worldPosition.x) < origin ? worldPosition.x + floatScale * normal.x : p_i.x,
-		abs(worldPosition.y) < origin ? worldPosition.y + floatScale * normal.y : p_i.y,
-		abs(worldPosition.z) < origin ? worldPosition.z + floatScale * normal.z : p_i.z
-	);
-}
 
 #endif // !GLSL_CLOSEST_HIT_COMMON_H

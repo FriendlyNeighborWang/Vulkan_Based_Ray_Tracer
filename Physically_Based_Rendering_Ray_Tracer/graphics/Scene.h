@@ -7,12 +7,32 @@
 #include "util/Vec.h"
 #include "vk_layer/VkMemoryAllocator.h"
 
+struct Light
+{
+	uint32_t lightType;
+
+	Vector3f emission;
+	float power;
+
+	Vector3f position;	// Point & Spot
+	Vector3f direction; // Directional & Spot
+	float range;		// Point & Spot
+
+	float innerConeAngle; // Spot
+	float outerConeAngle;
+
+	uint32_t geometryIndex;	// Mesh Light
+	float area;				// Mesh Light
+	glm::mat4 transform;	// Mesh Light
+};
+
 struct Material {
-	Vector4f albedo{ 1.0f };
+	uint32_t materialType;
 	Vector3f emission{ 0.0f };
+	Vector4f albedo{ 1.0f };
 	Float metallic{ 0.0f };
 	Float roughness{ 1.0f };
-	Float _padding[3]{ 0.0f };
+	Float _padding[2]{ 0.0f };
 };
 
 struct Geometry {
@@ -43,14 +63,21 @@ struct MeshInstance {
 };
 
 struct Scene {
-	Buffer& get_material_buffer(const VkMemoryAllocator& memAllocator);
-	Buffer& get_geometry_buffer(const VkMemoryAllocator& memAllocator);
+	Buffer& get_light_buffer(Context& context);
+	Buffer& get_material_buffer(Context& context);
+	Buffer& get_geometry_buffer(Context& context);
 
-	Buffer& get_vertex_buffer(const VkMemoryAllocator& memAllocator);
-	Buffer& get_index_buffer(const VkMemoryAllocator& memAllocator);
-	Buffer& get_normal_buffer(const VkMemoryAllocator& memAllocator);
+	Buffer& get_vertex_buffer(Context& context);
+	Buffer& get_index_buffer(Context& context);
+	Buffer& get_normal_buffer(Context& context);
+
+	void update_dynamic_scene_info();
+	Buffer& get_dynamic_scene_info(Context& context);
+	Buffer& get_static_scene_info(Context& context);
 
 	pstd::vector<Material> materials;
+
+	pstd::vector<Light> lights;
 
 	pstd::vector<Mesh> meshes;
 	pstd::vector<MeshInstance> instances;
@@ -59,13 +86,32 @@ struct Scene {
 	pstd::vector<uint32_t> indices;
 	pstd::vector<Normal> normals;
 
+	struct SceneStaticInfo {
+		// Light
+		uint32_t lightCount = 0;
+		float totalLightPower = 0.0f;
+		uint32_t padding[2];
+	};
+
+	struct SceneDynamicInfo {
+		// Camera
+		uint32_t padding[4];
+	};
+
+	SceneStaticInfo staticInfo;
+	SceneDynamicInfo dynamicInfo;
+
 private:
+	Buffer lightBuffer; bool if_lightBuffer_aval = false;
 	Buffer materialBuffer; bool if_materialBuffer_aval = false;
 	Buffer geometryBuffer; bool if_geometryBuffer_aval = false;
 
 	Buffer vertexBuffer; bool if_vertexBuffer_aval = false;
 	Buffer indexBuffer; bool if_indexBuffer_aval = false;
 	Buffer normalBuffer; bool if_normalBuffer_aval = false;
+
+	Buffer dynamicSceneInfoBuffer; bool if_dynamicSceneInfoBuffer_aval = false;
+	Buffer staticSceneInfoBuffer; bool if_staticSceneInfoBuffer_aval = false;
 };
 
 

@@ -1,0 +1,45 @@
+#ifndef GLSL_UTIL_H
+#define GLSL_UTIL_H
+
+
+const float PI = 3.14159265;
+
+float stepAndOutputRNGFloat(inout uint rngState)
+{
+  // Condensed version of pcg_output_rxs_m_xs_32_32, with simple conversion to floating-point [0,1].
+  rngState  = rngState * 747796405 + 1;
+  uint word = ((rngState >> ((rngState >> 28) + 4)) ^ rngState) * 277803737;
+  word      = (word >> 22) ^ word;
+  return float(word) / 4294967295.0f;
+}
+
+
+vec3 offsetPositionAlongNormal(vec3 worldPosition, vec3 normal){
+	const float int_scale = 256.0;
+	const ivec3 of_i = ivec3(int_scale * normal);
+
+	const vec3 p_i = vec3(
+		intBitsToFloat(floatBitsToInt(worldPosition.x)+((worldPosition.x < 0) ? -of_i.x : of_i.x)),
+		intBitsToFloat(floatBitsToInt(worldPosition.y)+((worldPosition.y < 0) ? -of_i.y : of_i.y)),
+		intBitsToFloat(floatBitsToInt(worldPosition.z)+((worldPosition.z < 0) ? -of_i.z : of_i.z))
+	);
+
+	const float origin = 1.0f / 32.0f;
+	const float floatScale = 1.0f / 65536.0f;
+	return vec3(
+		abs(worldPosition.x) < origin ? worldPosition.x + floatScale * normal.x : p_i.x,
+		abs(worldPosition.y) < origin ? worldPosition.y + floatScale * normal.y : p_i.y,
+		abs(worldPosition.z) < origin ? worldPosition.z + floatScale * normal.z : p_i.z
+	);
+}
+
+
+vec2 randomGaussian(inout uint rngState){
+	const float u1 = max(1e-38, stepAndOutputRNGFloat(rngState));
+	const float u2 = stepAndOutputRNGFloat(rngState);
+	const float r = sqrt(-2.0 * log(u1));
+	const float theta = 2 * PI * u2;
+	return r * vec2(cos(theta), sin(theta));
+}
+
+#endif // !GLSL_UTIL_H

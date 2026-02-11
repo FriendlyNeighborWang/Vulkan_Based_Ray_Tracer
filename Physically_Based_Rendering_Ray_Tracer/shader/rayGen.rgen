@@ -4,8 +4,11 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_debug_printf : require
 #include "../base/shader_base.h"
-#include "shaderCommon.glslh"
+#include "./common/shaderCommon.glslh"
 
+layout(binding = BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, set = RAY_TRACING_DYNAMIC_SET) uniform SceneDynamicInfo{
+	vec4 padding;
+} dynamicInfo;
 layout(binding = BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, set = RAY_TRACING_IMAGE_SET, rgba32f) uniform image2D storageImage;
 layout(binding = BINDING_RAY_TRACING_TLAS, set = RAY_TRACING_UNIFORM_SET) uniform accelerationStructureEXT tlas;
 
@@ -15,14 +18,6 @@ layout(push_constant) uniform PushConsts{
 };
 
 layout(location = 0) rayPayloadEXT PassableInfo pld;
-
-vec2 randomGaussian(inout uint rngState){
-	const float u1 = max(1e-38, stepAndOutputRNGFloat(rngState));
-	const float u2 = stepAndOutputRNGFloat(rngState);
-	const float r = sqrt(-2.0 * log(u1));
-	const float theta = 2 * PI * u2;
-	return r * vec2(cos(theta), sin(theta));
-}
 
 void main(){
 	const ivec2 resolution = imageSize(storageImage);
@@ -44,6 +39,7 @@ void main(){
 		pld.rngState = uint((pushConstants.sample_batch * NUM_SAMPLES + sampleIdx) * resolution.y * resolution.x + pixel.y * resolution.x + pixel.x);
 		pld.radiance = vec3(0.0);
 		pld.throughput = vec3(1.0);
+		pld.if_DI = false;
 		pld.rayHitSky = false;
 
 		vec3 rayOrigin = cameraOrigin;
@@ -57,7 +53,7 @@ void main(){
 
 		vec3 accumulatedRayColor = vec3(1.0);
 
-		for(int tracedSegments = 0; tracedSegments < 32; tracedSegments++){
+		for(int tracedSegments = 0; tracedSegments < 16; tracedSegments++){
 			traceRayEXT(
 				tlas,
 				gl_RayFlagsOpaqueEXT,
@@ -73,7 +69,7 @@ void main(){
 			);
 
 
-			if(pld.rayHitSky)
+			if(pld.rayHitSky || pld.if_DI)
 				break;
 
 			rayOrigin = pld.rayOrigin;
