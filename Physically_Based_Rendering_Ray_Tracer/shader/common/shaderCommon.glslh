@@ -4,14 +4,22 @@
 #extension GL_GOOGLE_include_directive : require
 #include "util.glslh"
 
+
+// Last Indirect Illumination Info
+struct LastIIInfo{
+	vec3 shadingPoint;
+	float bsdfPdf;
+	bool available;
+};
+
 struct PassableInfo{
 	vec3 radiance;
 	vec3 throughput;
 	vec3 rayOrigin;
 	vec3 rayDirection;
+	bool ifStop;
+	LastIIInfo lastIIInfo;
 	uint rngState;
-	bool if_DI;
-	bool rayHitSky;
 };
 
 struct ShadowRayInfo{
@@ -21,10 +29,12 @@ struct ShadowRayInfo{
 
 
 struct GeometryStruct {
-	uint materialIndex;
+	uint materialIdx;
 	uint firstVertex;
 	uint firstIndex;
 	uint primitiveCount;
+	uint lightIdx;
+	vec3 _padding;
 };
 
 struct Material{
@@ -36,10 +46,6 @@ struct Material{
 	vec2 padding;
 };
 
-struct MaterialSample{
-	vec3 direction;
-	float pdf;
-};
 
 struct Light{
 	uint lightType;
@@ -62,7 +68,6 @@ struct LightSample{
 	uint lightIdx;
 	vec3 pos;
 	vec3 normal;
-	float pdf;
 };
 
 
@@ -70,7 +75,7 @@ struct HitInfo{
 	vec3 objectPosition;
 	vec3 worldPosition;
 	vec3 worldNormal;
-	Material material;
+	uint globalGeometryIdx;
 };
 
 #endif // !GLSL_SHADER_COMMON_H

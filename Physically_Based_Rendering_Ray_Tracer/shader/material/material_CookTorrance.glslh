@@ -70,41 +70,18 @@ vec3 sampleCosineHemisphere(vec3 N, inout uint rngState){
 
 
 
-
-MaterialSample sampleCookTorranceBRDF(vec3 N, vec3 V, vec3 albedo, float metallic, float roughness, inout uint rngState){
-	MaterialSample result;
-
-
-	vec3 F0 = mix(vec3(0.04), albedo, metallic);
+float evaluateCookTorrancePDF(vec3 N, vec3 V, vec3 L, float metallic, float roughness){
+	float NdotL = dot(N, L);
+	
+	if(NdotL <= 0.0){
+		return 0.0;
+	}
+	
 	float alpha = roughness * roughness;
 	float specularProbability = 0.5 + 0.5 * metallic;
 
-	vec3 L, H;
+	vec3 H = normalize(V + L);
 
-	if(stepAndOutputRNGFloat(rngState) < specularProbability){
-		H = sampleGGX(N, roughness, rngState);
-
-		L = reflect(-V, H);
-
-		if(dot(N, L) <= 0.0){
-			result.pdf = 0.0;
-			result.direction = V;
-			return result;
-		}
-	}else{
-		L = sampleCosineHemisphere(N, rngState);
-		H = normalize(V + L);
-
-		if(dot(N, L) <= 0.0){
-			result.pdf = 0.0;
-			result.direction = V;
-			return result;
-		}
-	}
-
-	result.direction = L;
-
-	float NdotL = max(dot(N, L), 0.0);
 	float NdotH = max(dot(N, H), 0.0);
 	float HdotV = max(dot(H, V), 0.0);
 
@@ -113,9 +90,23 @@ MaterialSample sampleCookTorranceBRDF(vec3 N, vec3 V, vec3 albedo, float metalli
 	float pdfSpecular = D * NdotH / (4.0 * max(HdotV, 0.001));
 	float pdfDiffuse = NdotL / PI;
 
-	result.pdf = specularProbability * pdfSpecular + (1.0 - specularProbability) * pdfDiffuse;
+	return specularProbability * pdfSpecular + (1.0 - specularProbability) * pdfDiffuse;
+}
 
-	return result;
+
+vec3 sampleCookTorranceBRDF(vec3 N, vec3 V, float metallic, float roughness, inout uint rngState){
+	vec3 L;
+
+	float specularProbability = 0.5 + 0.5 * metallic;
+
+	if(stepAndOutputRNGFloat(rngState) < specularProbability){
+		vec3 H = sampleGGX(N, roughness, rngState);
+		L = reflect(-V, H);
+	}else{
+		L = sampleCosineHemisphere(N, rngState);
+	}
+
+	return L;
 }
 
 vec3 evaluateCookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metallic, float roughness){
@@ -138,6 +129,7 @@ vec3 evaluateCookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metalli
 
 	return specular + diffuse;
 }
+
 
 
 	

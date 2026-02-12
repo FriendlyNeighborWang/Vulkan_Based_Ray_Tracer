@@ -44,6 +44,8 @@ Buffer& Scene::get_geometry_buffer(Context& context) {
 		uint32_t firstVertex;
 		uint32_t firstIndex;
 		uint32_t primitiveCount;
+		uint32_t lightIdx;
+		uint32_t _padding[3];
 	};
 
 	pstd::vector<GeometryStruct> geometries;
@@ -55,6 +57,7 @@ Buffer& Scene::get_geometry_buffer(Context& context) {
 			geo.firstIndex = mesh.firstIndex + geometry.firstIndex;
 			geo.firstVertex = mesh.firstVertex + geometry.firstVertex;
 			geo.primitiveCount = geometry.primitiveCount;
+			geo.lightIdx = geometry.lightIdx;
 
 			geometries.push_back(geo);
 		}

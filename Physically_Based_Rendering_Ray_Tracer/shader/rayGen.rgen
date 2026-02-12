@@ -39,8 +39,8 @@ void main(){
 		pld.rngState = uint((pushConstants.sample_batch * NUM_SAMPLES + sampleIdx) * resolution.y * resolution.x + pixel.y * resolution.x + pixel.x);
 		pld.radiance = vec3(0.0);
 		pld.throughput = vec3(1.0);
-		pld.if_DI = false;
-		pld.rayHitSky = false;
+		pld.lastIIInfo.available = false;
+		pld.ifStop = false;
 
 		vec3 rayOrigin = cameraOrigin;
 
@@ -69,7 +69,7 @@ void main(){
 			);
 
 
-			if(pld.rayHitSky || pld.if_DI)
+			if(pld.ifStop)
 				break;
 
 			rayOrigin = pld.rayOrigin;

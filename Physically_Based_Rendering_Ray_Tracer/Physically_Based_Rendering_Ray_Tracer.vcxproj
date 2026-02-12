@@ -169,6 +169,9 @@
     <ClCompile Include="graphics\Renderer.cpp" />
     <ClCompile Include="graphics\Scene.cpp" />
     <ClCompile Include="main.cpp" />
+    <None Include="shader\light\light_Mesh.glslh">
+      <FileType>Document</FileType>
+    </None>
     <ClCompile Include="test\graphics_SceneLoader_test.cpp" />
     <ClCompile Include="test\util_log_test.cpp" />
     <ClCompile Include="test\util_memory_test.cpp" />
@@ -222,6 +225,7 @@
     <None Include="shader\light\light_interface.glslh" />
     <None Include="shader\material\material_CookTorrance.glslh" />
     <None Include="shader\material\material_interface.glslh" />
+    <None Include="shader\sampling\MIS.glslh" />
     <None Include="shader\sampling\NEE.glslh" />
     <CustomBuild Include="shader\shadowRayHit.rchit">
       <FileType>Document</FileType>

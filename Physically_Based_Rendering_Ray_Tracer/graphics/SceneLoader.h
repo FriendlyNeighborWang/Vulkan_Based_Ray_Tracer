@@ -203,14 +203,17 @@ private:
 
 	void loadLights(const Model& model, Scene& scene) {
 		uint32_t globalGeometryIndex = 0;
+		uint32_t lightIdx = 0;
 
 		for (const auto& instance : scene.instances) {
 			glm::mat4 instance_transform = instance.transform;
 
-			for (const auto& geo : scene.meshes[instance.meshIndex].geometries) {
+			for (auto& geo : scene.meshes[instance.meshIndex].geometries) {
 				const Material& mat = scene.materials[geo.materialIndex];
 
 				if (mat.emission.norm() > 0.001f) {
+					geo.lightIdx = lightIdx++;
+
 					Light light{};
 					light.lightType = LIGHT_TYPE_MESH;
 					light.emission = mat.emission;

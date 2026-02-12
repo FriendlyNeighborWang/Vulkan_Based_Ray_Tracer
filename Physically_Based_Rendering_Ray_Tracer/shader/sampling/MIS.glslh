@@ -1,0 +1,13 @@
+#ifndef GLSL_MIS_H
+#define GLSL_MIS_H
+
+// Return weight of pdf_a
+float powerHeuristicWeight(float pdf_a, float pdf_b){
+	float pdf_a2 = pdf_a * pdf_a;
+	float pdf_b2 = pdf_b * pdf_b;
+
+	return pdf_a2 / (pdf_a2 + pdf_b2);
+}
+
+
+#endif // !GLSL_MIS_H

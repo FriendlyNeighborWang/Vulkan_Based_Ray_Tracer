@@ -230,6 +230,12 @@
     <None Include="shader\sampling\NEE.glslh">
       <Filter>shader\sampling</Filter>
     </None>
+    <None Include="shader\sampling\MIS.glslh">
+      <Filter>shader\sampling</Filter>
+    </None>
+    <None Include="shader\light\light_Mesh.glslh">
+      <Filter>shader\light</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shader\rayGen.rgen">

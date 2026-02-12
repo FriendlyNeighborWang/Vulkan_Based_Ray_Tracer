@@ -240,8 +240,8 @@ int main() {
 	renderer.register_compute_pipeline("tmPipeline", tmPipeline);
 	
 
-	// renderer.offline_render("result.hdr");
-	renderer.realtime_render();
+	renderer.offline_render("result.hdr");
+	// renderer.realtime_render();
 
 	vkDeviceWaitIdle(context);
 

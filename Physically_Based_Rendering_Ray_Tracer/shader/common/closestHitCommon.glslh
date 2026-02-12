@@ -43,16 +43,11 @@ layout(location = 1) rayPayloadEXT ShadowRayInfo srd;
 
 
 
-GeometryStruct getCurrentGeometry(){
-	uint globalGeometryIndex = gl_InstanceCustomIndexEXT + gl_GeometryIndexEXT;
-	return geometries[globalGeometryIndex];
-}
-
-
 HitInfo getObjectHitInfo(){
 	HitInfo result;
 	
-	GeometryStruct geo = getCurrentGeometry();
+	result.globalGeometryIdx = gl_InstanceCustomIndexEXT + gl_GeometryIndexEXT;
+	GeometryStruct geo = geometries[result.globalGeometryIdx];
 
 	// objectPosition
 	const int primitiveID = gl_PrimitiveID;
@@ -83,8 +78,6 @@ HitInfo getObjectHitInfo(){
 
 	result.worldNormal = faceforward(result.worldNormal, rayDirection, result.worldNormal);
 
-	// material
-	result.material = materials[geo.materialIndex];
 
 	return result;
 }
