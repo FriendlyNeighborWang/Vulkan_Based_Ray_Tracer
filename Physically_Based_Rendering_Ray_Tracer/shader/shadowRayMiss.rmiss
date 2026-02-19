@@ -6,5 +6,5 @@
 layout(location = 1) rayPayloadInEXT ShadowRayInfo srd;
 
 void main(){
-	srd.shadowBlocked = true;
+	srd.shadowBlocked = false;
 }

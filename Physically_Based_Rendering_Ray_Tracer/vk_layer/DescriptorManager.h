@@ -2,7 +2,7 @@
 #define VULKAN_DESCRIPTOR_MANAGER
 
 #include "base/base.h"
-#include "Context.h"
+#include "util/pstd.h"
 
 class DescriptorSetLayout {
 	friend class DescriptorManager;
@@ -11,7 +11,7 @@ public:
 	DescriptorSetLayout(DescriptorSetLayout&& other) noexcept;
 	DescriptorSetLayout& operator=(DescriptorSetLayout&& other) noexcept;
 
-	void add_binding(uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, VkSampler* ImmutableSamplers = nullptr);
+	void add_binding(uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count = 1, VkSampler* ImmutableSamplers = nullptr);
 
 	void build();
 
@@ -73,6 +73,9 @@ public:
 
 	void descriptor_write(const std::string& set_name, uint32_t binding, const VkAccelerationStructureKHR& as);
 
+	// Can only be called for once before every update_descriptor_set() invocation
+	void descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type, const pstd::vector<Texture>& textures);
+
 	void update_descriptor_set();
 	
 private:
@@ -82,6 +85,7 @@ private:
 	std::list<VkDescriptorImageInfo> writesImage;
 	std::list<VkDescriptorBufferInfo> writesBuffer;
 	std::list<VkWriteDescriptorSetAccelerationStructureKHR> writesAS;
+	pstd::vector<VkDescriptorImageInfo> writesTexture;
 
 	std::unordered_map<std::string, DescriptorSet> sets;
 

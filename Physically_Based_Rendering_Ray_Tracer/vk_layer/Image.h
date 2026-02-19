@@ -2,7 +2,6 @@
 #define VULKAN_IMAGE
 
 #include "base/base.h"
-#include "CommandPool.h"
 
 class Image {
 	friend class VkMemoryAllocator;

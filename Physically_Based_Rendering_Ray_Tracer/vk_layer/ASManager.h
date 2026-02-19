@@ -2,8 +2,10 @@
 #define VULKAN_ACCELERATION_STRUCTURE_MANAGER
 
 #include "base/base.h"
-#include "graphics/Scene.h"
-#include "Context.h"
+#include "util/pstd.h"
+#include "Buffer.h"
+
+
 
 class BLAS {
 	friend class TLAS;

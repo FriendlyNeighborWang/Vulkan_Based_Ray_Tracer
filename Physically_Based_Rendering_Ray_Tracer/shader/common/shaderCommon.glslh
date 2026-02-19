@@ -43,7 +43,22 @@ struct Material{
 	vec4 albedo;
 	float metallic;
 	float roughness;
-	vec2 padding;
+	int emissiveTexture;
+	int albedoTexture;
+	int metallicRoughnessTexture;
+	int normalTexture;
+	uint alphaMode;
+	float alphaCutoff;
+	uint doublesided;
+	vec3 _padding;
+};
+
+struct MaterialSample{
+	uint materialType;
+	vec3 emission;
+	vec3 albedo;
+	float metallic;
+	float roughness;
 };
 
 
@@ -62,6 +77,9 @@ struct Light{
 	uint geometryIndex;	
 	float area;
 	mat4 transform;
+
+	uint ifDelta;
+	vec3 _padding;
 };
 
 struct LightSample{
@@ -74,8 +92,19 @@ struct LightSample{
 struct HitInfo{
 	vec3 objectPosition;
 	vec3 worldPosition;
-	vec3 worldNormal;
+	vec3 worldGeoNormal;
+	vec3 worldShadingNormal;
+	vec2 uv;
 	uint globalGeometryIdx;
+};
+
+struct CameraData {
+	vec3 position;
+	float yfov;
+	vec3 direction;
+	float znear;
+	vec3 up;
+	float zfar;
 };
 
 #endif // !GLSL_SHADER_COMMON_H

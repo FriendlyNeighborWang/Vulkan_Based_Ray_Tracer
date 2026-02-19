@@ -1,5 +1,8 @@
 #include "Scene.h"
 
+#include "vk_layer/Context.h"
+#include "vk_layer/VkMemoryAllocator.h"
+
 Buffer& Scene::get_light_buffer(Context& context) {
 	if (if_lightBuffer_aval) return lightBuffer;
 
@@ -34,6 +37,33 @@ Buffer& Scene::get_material_buffer(Context& context) {
 	if_materialBuffer_aval = true;
 
 	return materialBuffer;
+}
+
+pstd::vector<Texture>& Scene::get_textures(Context& context) {
+	if (if_textures_aval) return textures_list;
+
+	static unsigned char dummyPixel[] = { 255, 255, 255, 255 };
+	if (textures.empty()) {
+		TextureData dummyData;
+		dummyData.width = 1; dummyData.height = 1; dummyData.channels = 4;
+		dummyData.size = 4;
+		dummyData.data = dummyPixel;
+		dummyData.format = VK_FORMAT_R8G8B8A8_UNORM;
+
+		textures.push_back(dummyData);
+
+		samplers.push_back(SamplerData{});
+	}
+
+	samplers_list.reserve(samplers.size());
+	for (const auto& samplerinfo : samplers) 
+		samplers_list.emplace_back(context, samplerinfo);
+
+	textures_list = context.memAllocator().create_textures(textures, samplers_list);
+
+	if_textures_aval = true;
+
+	return textures_list;
 }
 
 Buffer& Scene::get_geometry_buffer(Context& context) {
@@ -96,6 +126,7 @@ Buffer& Scene::get_vertex_buffer(Context& context) {
 
 	return vertexBuffer;
 }
+
 Buffer& Scene::get_index_buffer(Context& context) {
 	if (if_indexBuffer_aval)return indexBuffer;
 
@@ -115,8 +146,31 @@ Buffer& Scene::get_index_buffer(Context& context) {
 	return indexBuffer;
 }
 
+Buffer& Scene::get_texcoord_buffer(Context& context) {
+	if (if_texcoordBuffer_aval)return texcoordBuffer;
+	
+	if (!(staticInfo.bufferFlags & BUFFER_FLAG_HAS_TEXCOORDS)) return placeholderBuffer(context);
+
+	texcoordBuffer = context.memAllocator().create_buffer(
+		texcoords.size() * sizeof(Vector2f),
+		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+	);
+
+	context.memAllocator().copy_to_buffer_directly(texcoords.data(), texcoordBuffer);
+
+	if_texcoordBuffer_aval = true;
+
+	return texcoordBuffer;
+}
+
+
 Buffer& Scene::get_normal_buffer(Context& context) {
 	if (if_normalBuffer_aval)return normalBuffer;
+
+	if (!(staticInfo.bufferFlags & BUFFER_FLAG_HAS_NORMALS)) return placeholderBuffer(context);
 
 	normalBuffer = context.memAllocator().create_buffer(
 		normals.size() * sizeof(Normal),
@@ -133,6 +187,25 @@ Buffer& Scene::get_normal_buffer(Context& context) {
 	return normalBuffer;
 }
 
+Buffer& Scene::get_tangent_buffer(Context& context) {
+	if (if_tangentBuffer_aval) return tangentBuffer;
+
+	if (!(staticInfo.bufferFlags & BUFFER_FLAG_HAS_TANGENTS)) return placeholderBuffer(context);
+
+	tangentBuffer = context.memAllocator().create_buffer(
+		tangents.size() * sizeof(Vector4f),
+		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+	);
+
+	context.memAllocator().copy_to_buffer_directly(tangents.data(), tangentBuffer);
+
+	if_tangentBuffer_aval = true;
+
+	return tangentBuffer;
+}
 
 void Scene::update_dynamic_scene_info() {
 	
@@ -173,4 +246,21 @@ Buffer& Scene::get_static_scene_info(Context& context) {
 	if_staticSceneInfoBuffer_aval = true;
 
 	return staticSceneInfoBuffer;
+}
+
+
+Buffer& Scene::placeholderBuffer(Context& context) {
+	if (if_placeHolderBuffer_aval) return _placeholderBuffer;
+
+	_placeholderBuffer = context.memAllocator().create_buffer(
+		sizeof(uint32_t),
+		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+	);
+
+	if_placeHolderBuffer_aval = true;
+
+	return _placeholderBuffer;
 }

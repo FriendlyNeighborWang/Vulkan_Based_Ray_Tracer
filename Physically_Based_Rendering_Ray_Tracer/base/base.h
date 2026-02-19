@@ -47,6 +47,8 @@ struct Vector3f;
 struct Normal;
 
 // Scene
+struct SamplerData;
+struct TextureData;
 struct Material;
 struct Light;
 struct Geometry;
@@ -63,10 +65,14 @@ class Context;
 class SwapChain;
 class Image;
 class Buffer;
+class Sampler;
+class Texture;
 class CommandBuffer;
 class CommandPool;
 class VkMemoryAllocator;
 class ShaderManager;
+class DescriptorSetLayout;
+class DescriptorSet;
 class DescriptorManager;
 class BLAS;
 class TLAS;

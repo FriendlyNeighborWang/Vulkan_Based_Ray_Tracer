@@ -2,6 +2,7 @@
 #define GLSL_LIGHT_INTERFACE_H
 
 #include "light_Mesh.glslh"
+#include "light_Directional.glslh"
 
 uint selectLightByPower(inout uint rngState){
 	uint lightCount = staticInfo.lightCount;
@@ -32,7 +33,9 @@ LightSample sampleLight(inout uint rngState){
 	case LIGHT_TYPE_MESH:
 		result.pos = sampleMeshLight(result.lightIdx, rngState, result.normal);
 		break;
-
+	case LIGHT_TYPE_DIRECTIONAL:
+		result.normal = sampleDirectionalLight(result.lightIdx);
+		break;
 	}
 
 	return result;
@@ -45,7 +48,9 @@ float evaluateLightPDF(uint lightIdx, vec3 lightSamplePoint, vec3 shadingPoint, 
 	case LIGHT_TYPE_MESH:
 		pdf = evaluateMeshLightPDF(lightIdx, lightSamplePoint, shadingPoint, lightNormal);
 		break;
-
+	case LIGHT_TYPE_DIRECTIONAL:
+		pdf = evaluateDirectionalLightPDF();
+		break;
 	}
 
 

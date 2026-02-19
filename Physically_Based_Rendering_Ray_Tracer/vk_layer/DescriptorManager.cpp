@@ -1,5 +1,9 @@
 #include "DescriptorManager.h"
 
+#include "Context.h"
+#include "Texture.h"
+#include "Image.h"
+#include "Buffer.h"
 
 DescriptorSetLayout::DescriptorSetLayout(VkDevice device) :_device(device){}
 
@@ -34,15 +38,15 @@ DescriptorSetLayout::~DescriptorSetLayout() {
 		vkDestroyDescriptorSetLayout(_device, _layout, nullptr);
 }
 
-void DescriptorSetLayout::add_binding(uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, VkSampler* ImmutableSamplers) {
+void DescriptorSetLayout::add_binding(uint32_t binding, VkDescriptorType type, VkShaderStageFlags stage, uint32_t count, VkSampler* ImmutableSamplers) {
 	VkDescriptorSetLayoutBinding layoutBinding{};
 	layoutBinding.binding = binding;
 	layoutBinding.descriptorType = type;
-	layoutBinding.descriptorCount = 1;
+	layoutBinding.descriptorCount = count;
 	layoutBinding.stageFlags = stage;
 	layoutBinding.pImmutableSamplers = ImmutableSamplers;
 
-	type_num[type] += 1;
+	type_num[type] += count;
 
 	_bindings.push_back(layoutBinding);
 }
@@ -200,6 +204,28 @@ void DescriptorManager::descriptor_write(const std::string& set_name, uint32_t b
 	writes.back().pNext = &writesAS.back();
 }
 
+void DescriptorManager::descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type, const pstd::vector<Texture>& textures) {
+	writesTexture.clear();
+	writesTexture.reserve(textures.size());
+	for (const auto& texture : textures) {
+		writesTexture.push_back(VkDescriptorImageInfo{});
+		writesTexture.back().imageLayout = texture.image().layout;
+		writesTexture.back().imageView = texture.image();
+		writesTexture.back().sampler = texture.sampler();
+	}
+
+	writes.push_back(VkWriteDescriptorSet{});
+	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes.back().dstSet = sets.find(set_name)->second;
+	writes.back().dstBinding = binding;
+	writes.back().dstArrayElement = 0;
+	writes.back().descriptorType = type;
+	writes.back().descriptorCount = static_cast<uint32_t>(writesTexture.size());
+	writes.back().pImageInfo = writesTexture.data();
+	
+}
+
+
 
 void DescriptorManager::update_descriptor_set(){
 	vkUpdateDescriptorSets(
@@ -213,4 +239,5 @@ void DescriptorManager::update_descriptor_set(){
 	writesBuffer.clear();
 	writesImage.clear();
 	writesAS.clear();
+	writesTexture.clear();
 }

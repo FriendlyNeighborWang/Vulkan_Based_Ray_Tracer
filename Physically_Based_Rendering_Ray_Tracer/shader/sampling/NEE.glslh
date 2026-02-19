@@ -7,31 +7,43 @@
 #include "MIS.glslh"
 
 // Return Radiance
-vec3 evaluateDI(vec3 N, vec3 V, vec3 shadingPos, Material mat,  inout uint rngState){
+vec3 evaluateDI(vec3 N, vec3 V, vec3 geoN, vec3 shadingPos, MaterialSample mat, inout uint rngState){
 	LightSample lightSample = sampleLight(rngState);
-	
-	vec3 direct_unnorm = lightSample.pos - shadingPos;
-	float dist = length(direct_unnorm);
+	Light light = lights[lightSample.lightIdx];
 
-	vec3 shadowRayDirection = direct_unnorm / dist;
+	vec3 shadowRayDirection;
+
+	if(light.lightType != LIGHT_TYPE_DIRECTIONAL){
+		vec3 direct_unnorm = lightSample.pos - shadingPos;
+		float dist = length(direct_unnorm);
+
+		shadowRayDirection = direct_unnorm / dist;
+
+		srd.targetT = dist;
+		srd.shadowBlocked = true;
+	}else{
+		shadowRayDirection = -lightSample.normal;
+
+		srd.targetT = 10000.0;
+		srd.shadowBlocked = true;
+	}
 
 	float NdotL = dot(N, shadowRayDirection);
-
 	if(NdotL <= 0.0){
 		return vec3(0.0);
 	}
 
-	srd.targetT = dist;
-	srd.shadowBlocked = true;
+
+	vec3 shadowRayOrigin = offsetPositionAlongNormal(shadingPos, geoN);
 
 	traceRayEXT(
 		tlas,
-		gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT,
+		gl_RayFlagsTerminateOnFirstHitEXT,
 		0xFF,
 		1,
 		0,
 		1,
-		shadingPos,
+		shadowRayOrigin,
 		0.001,
 		shadowRayDirection,
 		10000.0,
@@ -43,21 +55,27 @@ vec3 evaluateDI(vec3 N, vec3 V, vec3 shadingPos, Material mat,  inout uint rngSt
 	}
 
 
-
 	vec3 radiance = lights[lightSample.lightIdx].emission;
 	vec3 bsdf = evaluateMaterial(N, V, shadowRayDirection, mat);
 
-	float pdf_bsdf = evaluateMaterialPDF(N, V, shadowRayDirection, mat);
-	float pdf_light = evaluateLightPDF(lightSample.lightIdx, lightSample.pos, shadingPos, lightSample.normal);
+	float MIS_weight = 1.0f;
 
-	float MIS_weight = powerHeuristicWeight(pdf_light, pdf_bsdf);
+	float pdf_light = evaluateLightPDF(lightSample.lightIdx, lightSample.pos, shadingPos, lightSample.normal);
+	if(light.ifDelta == 0){
+		float pdf_bsdf = evaluateMaterialPDF(N, V, shadowRayDirection, mat);
+		
+		MIS_weight = powerHeuristicWeight(pdf_light, pdf_bsdf);
+	}
+	
+
 
 	return MIS_weight * radiance * bsdf * NdotL  / pdf_light;	
 }
 
 
 // Return Direction
-vec3 evaluateII(vec3 N, vec3 V, Material mat, out vec3 weight, out float pdf_bsdf, inout uint rngState){
+vec3 evaluateII(vec3 N, vec3 V, MaterialSample mat, out vec3 weight, out float pdf_bsdf, inout uint rngState){
+	
 	vec3 L = sampleMaterial(N, V, mat, rngState);
 
 	pdf_bsdf = evaluateMaterialPDF(N, V, L, mat);
@@ -72,6 +90,7 @@ vec3 evaluateII(vec3 N, vec3 V, Material mat, out vec3 weight, out float pdf_bsd
 
 	// Ignore MIS weight, as in Indirect Illumination pdf_light=0, MIS weight = 1
 	weight = bsdf * dot(N, L) / pdf_bsdf;
+
 	
 	return L;
 }
@@ -81,10 +100,11 @@ vec3 evaluateII(vec3 N, vec3 V, Material mat, out vec3 weight, out float pdf_bsd
 vec3 sampleNEE(vec3 V, HitInfo hitInfo, inout LastIIInfo lastInfo, out vec3 weight, out vec3 L, out bool ifStop, inout uint rngState){
 	
 	GeometryStruct geo = geometries[hitInfo.globalGeometryIdx];
-	Material mat = materials[geo.materialIdx];
+	MaterialSample mat = getMaterialSample(geo.materialIdx, hitInfo.uv);
 
 	vec3 currentPos = hitInfo.worldPosition;
-	vec3 currentNormal = hitInfo.worldNormal;
+	vec3 currentNormal = hitInfo.worldShadingNormal;
+
 
 	// Evaluate Emission
 	if(length(mat.emission) > 0.0){
@@ -104,7 +124,7 @@ vec3 sampleNEE(vec3 V, HitInfo hitInfo, inout LastIIInfo lastInfo, out vec3 weig
 
 
 	// Direct Illumination
-	vec3 DI_radiance = evaluateDI(currentNormal, V, currentPos, mat, rngState);
+	vec3 DI_radiance = evaluateDI(currentNormal, V, hitInfo.worldGeoNormal, currentPos, mat, rngState);
 	
 
 	// Indirect Illumination

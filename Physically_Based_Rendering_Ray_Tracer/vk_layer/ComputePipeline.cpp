@@ -1,5 +1,7 @@
 #include "ComputePipeline.h"
 
+#include "Context.h"
+
 
 ComputePipeline::ComputePipeline(Context& context):_context(context){}
 

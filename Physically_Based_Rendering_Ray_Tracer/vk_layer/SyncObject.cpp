@@ -1,5 +1,7 @@
 #include "SyncObject.h"
 
+#include "Context.h"
+
 Fence::Fence(VkDevice device, bool if_singled):_device(device) {
 	VkFenceCreateInfo fenceInfo{};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;

@@ -1,0 +1,213 @@
+#ifndef GLSL_CLOSEST_HIT_COMMON_H
+#define GLSL_CLOSEST_HIT_COMMON_H
+
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_debug_printf : require
+#include "../../base/shader_base.h"
+#include "./shaderCommon.glslh"
+
+hitAttributeEXT vec2 attributes;
+
+layout(binding = BINDING_RAY_TRACING_SCENE_STATIC_INFO, set = RAY_TRACING_UNIFORM_SET) uniform SceneStaticInfo{
+	uint lightCount;
+	float totalLightPower;
+	uint bufferFlags;
+	uint padding;
+} staticInfo;
+
+layout(binding = BINDING_RAY_TRACING_TLAS, set = RAY_TRACING_UNIFORM_SET) uniform accelerationStructureEXT tlas;
+
+layout(binding = BINDING_RAY_TRACING_VERTICES, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Vertices{
+	vec3 vertices[];
+};
+
+layout(binding = BINDING_RAY_TRACING_INDICES, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Indices{
+	uint indices[];
+};
+
+
+layout(binding = BINDING_RAY_TRACING_MATERIAL, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Materials{
+	Material materials[];
+};
+
+layout(binding = BINDING_RAY_TRACING_GEOMETRY, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Geometrys{
+	GeometryStruct geometries[];
+};
+
+layout(binding = BINDING_RAY_TRACING_LIGHT, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Lights{
+	Light lights[];
+};
+
+layout(binding = BINDING_RAY_TRACING_TEXCOORD0, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Texcoords{
+	vec2 texcoords[];
+};
+
+layout(binding = BINDING_RAY_TRACING_TEXTURE_ARRAY, set = RAY_TRACING_UNIFORM_SET) uniform sampler2D textures[];
+
+layout(binding = BINDING_RAY_TRACING_NORMAL, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Normals{
+	vec3 normals[];
+};
+
+layout(binding = BINDING_RAY_TRACING_TANGENT, set = RAY_TRACING_UNIFORM_SET, scalar) buffer Tangents{
+	vec4 tangents[];
+};
+
+
+layout(location = 0) rayPayloadInEXT PassableInfo pld;
+layout(location = 1) rayPayloadEXT ShadowRayInfo srd;
+
+bool hasNormals() { return (staticInfo.bufferFlags & BUFFER_FLAG_HAS_NORMALS) != 0; }
+bool hasTangents() { return (staticInfo.bufferFlags & BUFFER_FLAG_HAS_TANGENTS) != 0; }
+bool hasTexcoords() { return (staticInfo.bufferFlags & BUFFER_FLAG_HAS_TEXCOORDS) != 0; }
+
+
+HitInfo getObjectHitInfo(){
+	HitInfo result;
+	
+	// GeometryIdx
+	result.globalGeometryIdx = gl_InstanceCustomIndexEXT + gl_GeometryIndexEXT;
+	GeometryStruct geo = geometries[result.globalGeometryIdx];
+	Material mat = materials[geo.materialIdx];
+
+
+	const int primitiveID = gl_PrimitiveID;
+	const uint baseIndex = geo.firstIndex + 3 * primitiveID;
+
+	// objectPosition
+	const uint baseVertex = geo.firstVertex;
+
+	const uint i0 = indices[baseIndex + 0];
+	const uint i1 = indices[baseIndex + 1];
+	const uint i2 = indices[baseIndex + 2];
+
+	const vec3 v0 = vertices[baseVertex + i0];
+	const vec3 v1 = vertices[baseVertex + i1];
+	const vec3 v2 = vertices[baseVertex + i2];
+
+	vec3 barycentrics = vec3(0.0, attributes.x, attributes.y);
+	barycentrics.x = 1.0 - barycentrics.y - barycentrics.z;
+
+	// worldPosition & objectPosition
+	result.objectPosition = v0 * barycentrics.x + v1 * barycentrics.y + v2 * barycentrics.z;
+	result.worldPosition = gl_ObjectToWorldEXT * vec4(result.objectPosition, 1.0f);
+
+	// uv
+	result.uv = vec2(0.0);
+	if(hasTexcoords()){
+		const vec2 uv0 = texcoords[baseVertex + i0];
+		const vec2 uv1 = texcoords[baseVertex + i1];
+		const vec2 uv2 = texcoords[baseVertex + i2];
+
+		result.uv = barycentrics.x * uv0 + barycentrics.y * uv1 + barycentrics.z * uv2;
+	}
+
+	// Normal
+	const vec3 objectNormal = cross(v1 - v0, v2 - v0);
+	result.worldGeoNormal = normalize((objectNormal * gl_WorldToObjectEXT).xyz);
+	result.worldGeoNormal = faceforward(result.worldGeoNormal, gl_WorldRayDirectionEXT, result.worldGeoNormal);
+
+	if(hasNormals()){
+		const vec3 n0 = normals[baseVertex + i0];
+		const vec3 n1 = normals[baseVertex + i1];
+		const vec3 n2 = normals[baseVertex + i2];
+
+		vec3 shadingObjNormal = normalize(n0 * barycentrics.x + n1 * barycentrics.y + n2 * barycentrics.z);
+		result.worldShadingNormal = normalize((shadingObjNormal * gl_WorldToObjectEXT).xyz);
+		result.worldShadingNormal = faceforward(result.worldShadingNormal, gl_WorldRayDirectionEXT, result.worldGeoNormal);
+	}else{
+		result.worldShadingNormal = result.worldGeoNormal;
+	}
+
+	
+
+	// Tangent
+	vec3 T = vec3(0.0);
+	if(hasTangents()){
+		const vec4 t0 = tangents[baseVertex + i0];
+		const vec4 t1 = tangents[baseVertex + i1];
+		const vec4 t2 = tangents[baseVertex + i2];
+
+		T = normalize(barycentrics.x * t0.xyz + barycentrics.y * t1.xyz + barycentrics.z * t2.xyz);
+		T = normalize((gl_ObjectToWorldEXT * vec4(T, 0.0)).xyz);
+
+		vec3 N = result.worldShadingNormal;
+
+		if(abs(dot(T, N))>0.999){
+			vec3 up = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+			T = normalize(cross(up, N));
+		}else{
+			T = normalize(T - dot(T, N) * N);
+		}
+		
+		vec3 B = cross(N, T) * t0.w;
+
+		mat3 TBN = mat3(T, B, N);
+
+		vec3 tsNormal = vec3(0.0);
+		if(mat.normalTexture >= 0){
+			tsNormal = texture(textures[nonuniformEXT(mat.normalTexture)], result.uv).rgb * 2.0 - 1.0;
+			result.worldShadingNormal = normalize(TBN * tsNormal);
+		}
+
+	}	
+
+	return result;
+}
+
+
+vec2 getUV(GeometryStruct geo){
+
+	const int primitiveID = gl_PrimitiveID;
+	const uint baseIndex = geo.firstIndex + 3 * primitiveID;
+
+	vec3 barycentrics = vec3(0.0, attributes.x, attributes.y);
+	barycentrics.x = 1.0 - barycentrics.y - barycentrics.z;
+
+	const uint baseVertex = geo.firstVertex;
+
+	const uint i0 = indices[baseIndex + 0];
+	const uint i1 = indices[baseIndex + 1];
+	const uint i2 = indices[baseIndex + 2];
+
+	if(hasTexcoords()){
+		const vec2 uv0 = texcoords[baseVertex + i0];
+		const vec2 uv1 = texcoords[baseVertex + i1];
+		const vec2 uv2 = texcoords[baseVertex + i2];
+
+		return barycentrics.x * uv0 + barycentrics.y * uv1 + barycentrics.z * uv2;
+	}
+
+	return vec2(0.0);
+}
+
+
+MaterialSample getMaterialSample(uint materialIdx, vec2 uv){
+	MaterialSample result;
+	Material mat = materials[materialIdx];
+
+	result.materialType = mat.materialType;
+
+	result.emission = mat.emission;
+	if(mat.emissiveTexture >= 0)
+		result.emission *= texture(textures[nonuniformEXT(mat.emissiveTexture)], uv).rgb;
+
+	result.albedo = mat.albedo.rgb;
+	if(mat.albedoTexture >= 0)
+		result.albedo *= texture(textures[nonuniformEXT(mat.albedoTexture)], uv).rgb;
+
+	result.metallic = mat.metallic;
+	result.roughness = mat.roughness;
+
+	if(mat.metallicRoughnessTexture >= 0){
+		vec4 mr = texture(textures[nonuniformEXT(mat.metallicRoughnessTexture)], uv);
+		result.roughness *= mr.g;
+		result.metallic *= mr.b;
+	}
+
+	return result;
+}
+
+
+#endif // !GLSL_CLOSEST_HIT_COMMON_H

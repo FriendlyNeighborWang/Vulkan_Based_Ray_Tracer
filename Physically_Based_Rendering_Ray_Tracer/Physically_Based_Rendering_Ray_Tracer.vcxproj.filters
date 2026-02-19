@@ -49,6 +49,9 @@
     <Filter Include="shader\sampling">
       <UniqueIdentifier>{a6919f68-5391-4f83-aa86-c9ba82ce86e2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="resource\Sponza">
+      <UniqueIdentifier>{aef43334-f92f-4be9-894e-91a65f253142}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="util\memory.h">
@@ -141,6 +144,9 @@
     <ClInclude Include="deps\tiny_gltf\tiny_gltf.h">
       <Filter>deps\tiny_gltf</Filter>
     </ClInclude>
+    <ClInclude Include="vk_layer\Texture.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="deps\tlsf\tlsf.c">
@@ -201,6 +207,9 @@
     <ClCompile Include="graphics\Scene.cpp">
       <Filter>graphics</Filter>
     </ClCompile>
+    <ClCompile Include="vk_layer\Texture.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="util\Vec.inl">
@@ -215,7 +224,7 @@
     <None Include="shader\common\util.glslh">
       <Filter>shader\common</Filter>
     </None>
-    <None Include="shader\common\closestHitCommon.glslh">
+    <None Include="shader\common\hitShaderCommon.glslh">
       <Filter>shader\common</Filter>
     </None>
     <None Include="shader\material\material_CookTorrance.glslh">
@@ -236,6 +245,12 @@
     <None Include="shader\light\light_Mesh.glslh">
       <Filter>shader\light</Filter>
     </None>
+    <None Include="resource\Sponza\Sponza.gltf">
+      <Filter>resource\Sponza</Filter>
+    </None>
+    <None Include="shader\light\light_Directional.glslh">
+      <Filter>shader\light</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shader\rayGen.rgen">
@@ -254,6 +269,9 @@
       <Filter>shader</Filter>
     </CustomBuild>
     <CustomBuild Include="shader\shadowRayMiss.rmiss">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\alphaTest.rahit">
       <Filter>shader</Filter>
     </CustomBuild>
   </ItemGroup>

@@ -108,6 +108,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -124,6 +125,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -162,6 +164,7 @@
     <ClInclude Include="vk_layer\ShaderManager.h" />
     <ClInclude Include="vk_layer\SwapChain.h" />
     <ClInclude Include="vk_layer\SyncObject.h" />
+    <ClInclude Include="vk_layer\Texture.h" />
     <ClInclude Include="vk_layer\VkMemoryAllocator.h" />
   </ItemGroup>
   <ItemGroup>
@@ -169,6 +172,15 @@
     <ClCompile Include="graphics\Renderer.cpp" />
     <ClCompile Include="graphics\Scene.cpp" />
     <ClCompile Include="main.cpp" />
+    <None Include="resource\Sponza\Sponza.gltf" />
+    <CustomBuild Include="shader\alphaTest.rahit">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe -g -Od --target-env vulkan1.3 -o "$(ProjectDir)shader\spv\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+    <None Include="shader\light\light_Directional.glslh" />
     <None Include="shader\light\light_Mesh.glslh">
       <FileType>Document</FileType>
     </None>
@@ -187,6 +199,7 @@
     <ClCompile Include="vk_layer\ShaderManager.cpp" />
     <ClCompile Include="vk_layer\SwapChain.cpp" />
     <ClCompile Include="vk_layer\SyncObject.cpp" />
+    <ClCompile Include="vk_layer\Texture.cpp" />
     <ClCompile Include="vk_layer\VkMemoryAllocator.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -219,7 +232,7 @@
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
     <None Include="resource\cornell_box\scene.gltf" />
-    <None Include="shader\common\closestHitCommon.glslh" />
+    <None Include="shader\common\hitShaderCommon.glslh" />
     <None Include="shader\common\shaderCommon.glslh" />
     <None Include="shader\common\util.glslh" />
     <None Include="shader\light\light_interface.glslh" />

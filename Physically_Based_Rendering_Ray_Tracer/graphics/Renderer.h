@@ -1,12 +1,11 @@
 #ifndef PBRT_GRAPHICS_DRAW_FRAME
 #define PBRT_GRAPHICS_DRAW_FRAME
 
+#include "base/base.h"
 #include "util/Timer.h"
-#include "vk_layer/Context.h"
-#include "vk_layer/SwapChain.h"
-#include "vk_layer/SyncObject.h"
-#include "vk_layer/ComputePipeline.h"
 #include "Window.h"
+
+#include <unordered_map>
 
 
 class Renderer {

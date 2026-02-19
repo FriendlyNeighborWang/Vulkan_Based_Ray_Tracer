@@ -2,9 +2,7 @@
 #define VULKAN_RAYTRACING_PIPELINE
 
 #include "base/base.h"
-#include "Context.h"
-#include "DescriptorManager.h"
-#include "ShaderManager.h"
+#include "util/pstd.h"
 
 class RTPipeline {
 public:

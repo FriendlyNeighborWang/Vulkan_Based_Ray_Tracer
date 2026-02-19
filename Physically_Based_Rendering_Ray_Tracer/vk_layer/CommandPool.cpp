@@ -1,5 +1,6 @@
 #include "CommandPool.h"
 
+#include "vk_layer/Context.h"
 
 CommandBuffer::CommandBuffer(VkCommandBuffer command_buffer, CommandPool& commandPool):cmdBuffer(command_buffer), cmdPool(commandPool){}
 

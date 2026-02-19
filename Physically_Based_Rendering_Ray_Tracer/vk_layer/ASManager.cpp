@@ -1,9 +1,15 @@
 #include "ASManager.h"
 
+#include "graphics/Scene.h"
+#include "Context.h"
+#include "CommandPool.h"
+#include "VkMemoryAllocator.h"
+
 BLAS::BLAS(BLAS&& other) noexcept:pasm(other.pasm),asBuffer(std::move(other.asBuffer)), as(other.as){
 	other.as = VK_NULL_HANDLE;
 	other.pasm = nullptr;
 }
+
 BLAS& BLAS::operator=(BLAS&& other) noexcept {
 if (this != &other) {
 	if (as != VK_NULL_HANDLE)pasm->vkDestroyAccelerationStructureKHR(pasm->_context, as, nullptr);
@@ -50,7 +56,10 @@ BLAS::BLAS(ASManager* address, Mesh& mesh, const Buffer& vertexBuffer, const Buf
 		VkAccelerationStructureGeometryKHR geometry{};
 		geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 		geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-		geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+		if (geo.if_opaque)
+			geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+		else
+			geometry.flags = 0;
 		geometry.geometry.triangles = trianglesData;
 
 		geometries.push_back(geometry);

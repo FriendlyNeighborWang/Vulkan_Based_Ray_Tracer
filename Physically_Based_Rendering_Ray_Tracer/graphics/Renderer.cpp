@@ -1,6 +1,17 @@
 #include "Renderer.h"
 
 
+#include "Scene.h"
+#include "vk_layer/Image.h"
+#include "vk_layer/Context.h"
+#include "vk_layer/SwapChain.h"
+#include "vk_layer/SyncObject.h"
+#include "vk_layer/RTPipeline.h"
+#include "vk_layer/CommandPool.h"
+#include "vk_layer/ComputePipeline.h"
+#include "vk_layer/DescriptorManager.h"
+#include "vk_layer/VkMemoryAllocator.h"
+
 #include "stb_image_write.h"
 
 Renderer::Renderer(Context& context, Window& window, SwapChain& swapChain, Scene& scene) :_context(context), window(window), swapChain(swapChain), scene(scene){
@@ -327,6 +338,8 @@ void Renderer::offline_render(const std::string& name) {
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	);
 
+
+
 	// Timer
 	Timer& offlineTimer = timerManager.register_timer("Offline");
 
@@ -356,7 +369,8 @@ void Renderer::offline_render(const std::string& name) {
 		0, nullptr
 	);
 
-	const uint32_t sample_batch = 1024;
+
+	const uint32_t sample_batch = 128;
 
 	for (uint32_t current_batch = 0; current_batch < sample_batch; ++current_batch) {
 		pushConstants.sample_batch = current_batch;
@@ -379,6 +393,18 @@ void Renderer::offline_render(const std::string& name) {
 			renderTarget.extent.height,
 			1
 		);
+
+		/*if (current_batch < sample_batch - 1) {
+			renderTarget.transition_layout(
+				_context, cmdBuffer,
+				VK_IMAGE_LAYOUT_GENERAL,
+				VK_ACCESS_SHADER_WRITE_BIT,
+				VK_ACCESS_SHADER_READ_BIT,
+				VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+				VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR
+			);
+		}*/
+			
 	}
 
 

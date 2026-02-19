@@ -7,11 +7,21 @@
 #include <stdexcept>
 #include <cstdlib>
 
+
+#include "vk_layer/Image.h"
 #include "vk_layer/Context.h"
 #include "vk_layer/SwapChain.h"
+#include "vk_layer/ASManager.h"
+#include "vk_layer/SyncObject.h"
+#include "vk_layer/RTPipeline.h"
+#include "vk_layer/CommandPool.h"
+#include "vk_layer/ComputePipeline.h"
+#include "vk_layer/DescriptorManager.h"
+#include "vk_layer/VkMemoryAllocator.h"
+
 #include "graphics/Window.h"
-#include "graphics/SceneLoader.h"
 #include "graphics/Renderer.h"
+#include "graphics/SceneLoader.h"
 
 
 
@@ -58,16 +68,22 @@ int main() {
 	asFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
 	asFeatures.pNext = &scalarFeatures;
 
+	VkPhysicalDeviceDescriptorIndexingFeatures dIFeatures{};
+	dIFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+	dIFeatures.pNext = &asFeatures;
+
 	VkPhysicalDeviceFeatures2 features{};
 	features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	features.pNext = &asFeatures;
+	features.pNext = &dIFeatures;
 
 	auto validator = [&]() {
 		return
 			asFeatures.accelerationStructure &&
 			rtFeatures.rayTracingPipeline &&
 			scalarFeatures.scalarBlockLayout &&
-			bufferDeviceAddressFeatures.bufferDeviceAddress;
+			bufferDeviceAddressFeatures.bufferDeviceAddress &&
+			dIFeatures.runtimeDescriptorArray &&
+			dIFeatures.shaderSampledImageArrayNonUniformIndexing;
 		};
 	context.register_device_feature(features, validator);
 
@@ -87,7 +103,8 @@ int main() {
 
 	// Load Scene
 	SceneLoader& sceneLoader = SceneLoader::Get();
-	Scene scene = sceneLoader.LoadScene("resource/cornell_box/scene.gltf");
+	Scene scene = sceneLoader.LoadScene("resource/Sponza/Sponza.gltf");
+	// Scene scene = sceneLoader.LoadScene("resource/cornell_box/scene.gltf");
 	
 
 
@@ -98,8 +115,8 @@ int main() {
 	context.shaderManager().add_raygen_shader("./shader/spv/rayGen.rgen.spv");
 	context.shaderManager().add_miss_shader("./shader/spv/rayMiss.rmiss.spv");
 	context.shaderManager().add_miss_shader("./shader/spv/shadowRayMiss.rmiss.spv");
-	context.shaderManager().add_hit_group_shader("./shader/spv/closestHit.rchit.spv");
-	context.shaderManager().add_hit_group_shader("./shader/spv/shadowRayHit.rchit.spv");
+	context.shaderManager().add_hit_group_shader("./shader/spv/closestHit.rchit.spv", "./shader/spv/alphaTest.rahit.spv");
+	context.shaderManager().add_hit_group_shader("./shader/spv/shadowRayHit.rchit.spv", "./shader/spv/alphaTest.rahit.spv");
 	
 
 	context.shaderManager().build_shader_stages_and_shader_groups();
@@ -149,12 +166,16 @@ int main() {
 	Buffer& dynamicSceneInfoBuffer = scene.get_dynamic_scene_info(context);
 	Buffer& staticSceneInfoBuffer = scene.get_static_scene_info(context);
 
-	// Vertex Buffer & Index Buffer & Material Buffer & Geometry Buffer
+	// Scene Data
 	Buffer& vertexBuffer = scene.get_vertex_buffer(context);
 	Buffer& indexBuffer = scene.get_index_buffer(context);
 	Buffer& materialBuffer = scene.get_material_buffer(context);
 	Buffer& geometryBuffer = scene.get_geometry_buffer(context);
 	Buffer& lightBuffer = scene.get_light_buffer(context);
+	Buffer& normalBuffer = scene.get_normal_buffer(context);
+	Buffer& tangentBuffer = scene.get_tangent_buffer(context);
+	Buffer& texcoordBuffer = scene.get_texcoord_buffer(context);
+	pstd::vector<Texture>& textures = scene.get_textures(context);
 
 
 	// Create Descriptor Set Layout
@@ -164,7 +185,7 @@ int main() {
 	DescriptorSetLayout& rt_uniform_layout = context.descriptorManager().create_null_descriptor_set_layout("RAY_TRACING_UNIFORM_SET_LAYOUT");
 	DescriptorSetLayout& compute_tone_mapping_layout = context.descriptorManager().create_null_descriptor_set_layout("COMPUTE_TONE_MAPPING_SET_LAYOUT");
 
-	rt_dynamic_layout.add_binding(BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	rt_dynamic_layout.add_binding(BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
 	rt_dynamic_layout.build();
 
@@ -173,14 +194,18 @@ int main() {
 
 	rt_image_layout.build();
 
-	
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_SCENE_STATIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_SCENE_STATIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
 	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_TLAS, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_LIGHT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_LIGHT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_TEXCOORD0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_TEXTURE_ARRAY, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, static_cast<uint32_t>(textures.size()));
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_NORMAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_TANGENT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
 
 	rt_uniform_layout.build();
 
@@ -212,6 +237,10 @@ int main() {
 	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, materialBuffer);
 	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, geometryBuffer);
 	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_LIGHT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, lightBuffer);
+	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_TEXCOORD0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, texcoordBuffer);
+	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_TEXTURE_ARRAY, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, textures);
+	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_NORMAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, normalBuffer);
+	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_TANGENT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, tangentBuffer);
 
 
 	context.descriptorManager().descriptor_write("COMPUTE_TONE_MAPPING_SET", BINDING_COMPUTE_TONE_MAPPING_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, renderTarget);
@@ -240,8 +269,9 @@ int main() {
 	renderer.register_compute_pipeline("tmPipeline", tmPipeline);
 	
 
-	renderer.offline_render("result.hdr");
-	// renderer.realtime_render();
+	// renderer.offline_render("result.hdr");
+	
+	renderer.realtime_render();
 
 	vkDeviceWaitIdle(context);
 

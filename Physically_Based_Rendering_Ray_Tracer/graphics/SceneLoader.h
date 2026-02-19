@@ -21,12 +21,11 @@ public:
 	}
 
 	Scene LoadScene(const std::string& filePath) {
-		Model model;
-		tinygltf::TinyGLTF loader;
 
 		std::string err;
 		std::string warn;
 
+		loader.SetPreserveImageChannels(false);
 		bool res = loader.LoadASCIIFromFile(&model, &err, &warn, filePath);
 
 		if (!warn.empty()) {
@@ -40,23 +39,31 @@ public:
 
 		Scene outScene;
 
-		loadMaterial(model, outScene);
+		loadTexture(outScene);
 
-		loadMeshes(model, outScene);
+		loadMaterial(outScene);
+
+		loadMeshes(outScene);
+
+		loadCamera(outScene);
+
+		loadPunctualLights(outScene);
 
 		const tinygltf::Scene& scene = model.scenes[model.defaultScene > -1 ? model.defaultScene : 0];
 
 		glm::mat4 rootTransform(1.0f);
 		for (size_t i = 0; i < scene.nodes.size(); ++i) {
-			processNode(model, model.nodes[scene.nodes[i]], rootTransform, outScene);
+			processNode(model.nodes[scene.nodes[i]], rootTransform, outScene);
 		}
 
-		loadLights(model, outScene);
+		loadMeshLights(outScene);
 
 		LOG_STREAM("SceneLoader") << " Materials: " << outScene.materials.size() << std::endl;
-		LOG_STREAM("SceneLoader") << " Meshes (BLAS): " << outScene.materials.size() << std::endl;
-		LOG_STREAM("SceneLoader") << " Lights: " << outScene.lights.size() << std::endl;
+		LOG_STREAM("SceneLoader") << " Textures: " << outScene.textures.size() << std::endl;
+		LOG_STREAM("SceneLoader") << " Meshes (BLAS): " << outScene.meshes.size() << std::endl;
 		LOG_STREAM("SceneLoader") << " Instances (TLAS): " << outScene.instances.size() << std::endl;
+		LOG_STREAM("SceneLoader") << " Lights: " << outScene.lights.size() << std::endl;
+		LOG_STREAM("SceneLoader") << " Camera: (" << outScene.dynamicInfo.camera.position.x() << ", " << outScene.dynamicInfo.camera.position.y() << ", " << outScene.dynamicInfo.camera.position.z() <<")" << std::endl;
 
 		return outScene;
 	}
@@ -65,7 +72,46 @@ public:
 private:
 	SceneLoader() = default;
 
-	void loadMaterial(const Model& model, Scene& scene) {
+	void loadTexture(Scene& scene) {
+		if (model.textures.empty()) return;
+
+		scene.textures.reserve(model.textures.size());
+
+		for (const auto& gltfTex : model.textures) {
+			TextureData tex{};
+			
+			if (gltfTex.source >= 0 && gltfTex.source < static_cast<uint32_t>(model.images.size())) {
+				const tinygltf::Image& img = model.images[gltfTex.source];
+				tex.width = static_cast<uint32_t>(img.width);
+				tex.height = static_cast<uint32_t>(img.height);
+				tex.channels = static_cast<uint32_t>(img.component);
+				tex.data = img.image.data();
+				tex.bits = img.bits;
+				tex.size = tex.width * tex.height * tex.channels * img.bits / 8;
+				tex.samplerIdx = gltfTex.sampler >= 0 ? static_cast<uint32_t>(gltfTex.sampler) : 0;
+			}
+
+			scene.textures.push_back(tex);
+		}
+
+		scene.samplers.reserve(model.samplers.size());
+
+		for (const auto& gltfSampler : model.samplers) {
+			SamplerData sam{};
+			sam.magFilter = glFilterToVk(gltfSampler.magFilter);
+			sam.minFilter = glFilterToVk(gltfSampler.minFilter);
+			sam.addressModeU = glWrapToVk(gltfSampler.wrapS);
+			sam.addressModeV = glWrapToVk(gltfSampler.wrapT);
+			
+			scene.samplers.push_back(sam);
+		}
+
+		if (scene.samplers.empty())
+			scene.samplers.push_back(SamplerData{});
+		
+	}
+
+	void loadMaterial(Scene& scene) {
 		if (model.materials.empty()) return;
 
 		scene.materials.reserve(model.materials.size());
@@ -74,27 +120,79 @@ private:
 			Material material{};
 			material.materialType = MATERIAL_TYPE_COOK_TORRANCE;
 
+			// Albedo
 			if (mat.values.find("baseColorFactor") != mat.values.end()) {
 				const auto& color = mat.values.at("baseColorFactor").ColorFactor();
 				material.albedo = Vector4f((float)color[0], (float)color[1], (float)color[2], (float)color[3]);
 			}
+			material.albedoTexture = mat.pbrMetallicRoughness.baseColorTexture.index;
+			if (material.albedoTexture != -1) {
+				auto& tex = scene.textures[material.albedoTexture];
+				tex.format = findTextureFormat(tex, true);
+			}
+				
+			// Metallic & Roughness
 			if (mat.values.find("metallicFactor") != mat.values.end()) {
 				material.metallic = (float)mat.values.at("metallicFactor").Factor();
 			}
 			if (mat.values.find("roughnessFactor") != mat.values.end()) {
 				material.roughness = (float)mat.values.at("roughnessFactor").Factor();
 			}
+			material.metallicRoughnessTexture = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
+			if (material.metallicRoughnessTexture != -1) {
+				auto& tex = scene.textures[material.metallicRoughnessTexture];
+				tex.format = findTextureFormat(tex, false);
+			}
+				
+
+			// Emission
 			if (mat.additionalValues.find("emissiveFactor") != mat.additionalValues.end()) {
 				const auto& emissive = mat.additionalValues.at("emissiveFactor").ColorFactor();
 				material.emission = Vector3f((float)emissive[0], (float)emissive[1], (float)emissive[2]);
 			}
 
+			material.emissiveTexture = mat.emissiveTexture.index;
+
+			if (material.emissiveTexture != -1) {
+				auto& tex = scene.textures[material.emissiveTexture];
+				tex.format = findTextureFormat(tex, true);
+
+				if (material.emission == Vector3f(0.0f))
+					material.emission = Vector3f(1.0f);
+			}
+				
+
+			// Normal
+			material.normalTexture = mat.normalTexture.index;
+			if (material.normalTexture != -1) {
+				auto& tex = scene.textures[material.normalTexture];
+				tex.format = findTextureFormat(tex, false);
+			}
+				
+
+
+			// Alpha
+			if (mat.alphaMode == "MASK") {
+				material.alphaMode = ALPHA_MODE_MASK;
+				material.alphaCutoff = mat.alphaCutoff;
+			} else if (mat.alphaMode == "BLEND") {
+				material.alphaMode = ALPHA_MODE_BLEND;
+			} else {
+				material.alphaMode = ALPHA_MODE_OPAQUE;
+			}
+
+			// Double Sided
+			if (mat.doubleSided)
+				material.doublesided = 1;
+			else
+				material.doublesided = 0;
+			
 
 			scene.materials.push_back(material);
 		}
 	}
 
-	void loadMeshes(const Model& model, Scene& scene) {
+	void loadMeshes(Scene& scene) {
 		if (model.meshes.empty())return;
 
 		uint32_t geometryCount = 0;
@@ -122,6 +220,8 @@ private:
 				// 
 				const float* positionBuffer = nullptr;
 				const float* normalBuffer = nullptr;
+				const float* tangentBuffer = nullptr;
+				const float* texcoordBuffer = nullptr;
 
 				size_t vertexCount = 0;
 
@@ -134,19 +234,43 @@ private:
 				}
 
 				if (primitive.attributes.find("NORMAL") != primitive.attributes.end()) {
+					scene.staticInfo.bufferFlags |= BUFFER_FLAG_HAS_NORMALS;
+
 					const Accessor& accessor = model.accessors[primitive.attributes.at("NORMAL")];
 					const BufferView& view = model.bufferViews[accessor.bufferView];
 					const tinygltf::Buffer& buffer = model.buffers[view.buffer];
 					normalBuffer = reinterpret_cast<const float*>(&(buffer.data[accessor.byteOffset + view.byteOffset]));
 				}
 
+				if (primitive.attributes.find("TANGENT") != primitive.attributes.end()) {
+					scene.staticInfo.bufferFlags |= BUFFER_FLAG_HAS_TANGENTS;
+
+					const Accessor& accessor = model.accessors[primitive.attributes.at("TANGENT")];
+					const BufferView& view = model.bufferViews[accessor.bufferView];
+					const tinygltf::Buffer& buffer = model.buffers[view.buffer];
+					tangentBuffer = reinterpret_cast<const float*>(&(buffer.data[accessor.byteOffset + view.byteOffset]));
+				}
+
+				if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
+					scene.staticInfo.bufferFlags |= BUFFER_FLAG_HAS_TEXCOORDS;
+
+					const Accessor& accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+					const BufferView& view = model.bufferViews[accessor.bufferView];
+					const tinygltf::Buffer& buffer = model.buffers[view.buffer];
+					texcoordBuffer = reinterpret_cast<const float*>(&(buffer.data[accessor.byteOffset + view.byteOffset]));
+				}
+
 				for (size_t v = 0; v < vertexCount; ++v) {
 					Vector3f pos = { positionBuffer[v * 3 + 0], positionBuffer[v * 3 + 1], positionBuffer[v * 3 + 2] };
 					Normal norm = normalBuffer ? Normal(normalBuffer[v * 3 + 0], normalBuffer[v * 3 + 1], normalBuffer[v * 3 + 2]) : Normal{ 0.0,0.0,0.0 };
+					Vector4f tan = tangentBuffer ? Vector4f(tangentBuffer[v * 4 + 0], tangentBuffer[v * 4 + 1], tangentBuffer[v * 4 + 2], tangentBuffer[v * 4 + 3]) : Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+					Vector2f uv = texcoordBuffer ? Vector2f(texcoordBuffer[v * 2 + 0], texcoordBuffer[v * 2 + 1]) : Vector2f(0.0f, 0.0f);
 
 
 					scene.vertices.push_back(pos);
 					scene.normals.push_back(norm);
+					scene.tangents.push_back(tan);
+					scene.texcoords.push_back(uv);
 				}
 
 
@@ -187,6 +311,11 @@ private:
 
 				geometry.vertexCount = static_cast<uint32_t>(vertexCount);
 				geometry.primitiveCount = indexCount / 3;
+
+				if (scene.materials[geometry.materialIndex].alphaMode != ALPHA_MODE_OPAQUE)
+					geometry.if_opaque = false;
+				else
+					geometry.if_opaque = true;
 				
 				mesh.geometries.push_back(geometry);
 
@@ -201,10 +330,61 @@ private:
 		}
 	}
 
-	void loadLights(const Model& model, Scene& scene) {
-		uint32_t globalGeometryIndex = 0;
-		uint32_t lightIdx = 0;
+	void loadPunctualLights(Scene& scene) {
+		// Load Punctual Light
+		if (!model.lights.empty()) {
+			for (const auto& gltfLight : model.lights) {
 
+				Light light{};
+
+				Vector3f color{ 1.0f };
+				if (gltfLight.color.size() == 3) {
+					color = Vector3f(
+						static_cast<float>(gltfLight.color[0]),
+						static_cast<float>(gltfLight.color[1]),
+						static_cast<float>(gltfLight.color[2])
+					);
+				}
+				float intensity = static_cast<float>(gltfLight.intensity) / 683.0f;
+				light.emission = color * intensity;
+				light.range = static_cast<float>(gltfLight.range);
+
+
+				if (gltfLight.type == "directional") {
+					light.lightType = LIGHT_TYPE_DIRECTIONAL;
+					light.ifDelta = 1;
+					light.power = 1.0f;
+				}
+				else if (gltfLight.type == "point") {
+					light.lightType = LIGHT_TYPE_POINT;
+					light.ifDelta = 1;
+					light.power = intensity;
+				}
+				else if (gltfLight.type == "spot") {
+					light.lightType = LIGHT_TYPE_SPOT;
+					light.ifDelta = 1;
+					light.innerConeAngle = static_cast<float>(gltfLight.spot.innerConeAngle);
+					light.outerConeAngle = static_cast<float>(gltfLight.spot.outerConeAngle);
+					light.power = intensity;
+				}
+				else {
+					continue;
+				}
+
+				scene.lights.push_back(light);
+				scene.staticInfo.lightCount++;
+				scene.staticInfo.totalLightPower += light.power;
+
+			}
+		}
+	}
+
+	void loadMeshLights(Scene& scene) {
+		uint32_t globalGeometryIndex = 0;
+		uint32_t lightIdx = scene.lights.size();
+
+
+		// Load Mesh Light
 		for (const auto& instance : scene.instances) {
 			glm::mat4 instance_transform = instance.transform;
 
@@ -221,6 +401,7 @@ private:
 					light.transform = instance_transform;
 					light.area = computeMeshLightArea(scene, scene.meshes[instance.meshIndex], geo, light);
 					light.power = computeLightPower(light);
+					light.ifDelta = 0;
 
 					scene.lights.push_back(light);
 					scene.staticInfo.lightCount++;
@@ -228,12 +409,48 @@ private:
 				}
 				++globalGeometryIndex;
 			}
+		}
 
+
+		// Default Sun Light
+		if (scene.lights.empty()) {
+			Light sunLight{};
+			sunLight.lightType = LIGHT_TYPE_DIRECTIONAL;
+			sunLight.emission = { 47.0f, 43.0f, 37.0f };
+			sunLight.direction = Normalize(Vector3f(0.0f, -1.0f, 1.0f));
+			sunLight.power = 1.0f;
+			sunLight.ifDelta = 1;
+
+			scene.lights.push_back(sunLight);
+			scene.staticInfo.lightCount++;
+			scene.staticInfo.totalLightPower += sunLight.power;
 		}
 
 	}
 
-	void processNode(const Model& model, const Node& node, const glm::mat4& parentTransform, Scene& scene) {
+	void loadCamera(Scene& scene) {
+
+		CameraData cam{};
+
+		for (const auto& gltfCam : model.cameras) {
+
+			cam.direction = Vector3f(0.0f, 0.0f, -1.0f);
+			cam.up = Vector3f(0.0f, 1.0f, 0.0f);
+
+			if (gltfCam.type == "perspective") {
+				cam.yfov = static_cast<float>(gltfCam.perspective.yfov);
+				cam.znear = static_cast<float>(gltfCam.perspective.znear);
+				cam.zfar = static_cast<float>(gltfCam.perspective.zfar);
+			}
+			scene.dynamicInfo.camera = cam;
+		}
+
+
+		if (model.cameras.size() == 0)
+			scene.dynamicInfo.camera = cam;
+	}
+
+	void processNode(const Node& node, const glm::mat4& parentTransform, Scene& scene) {
 		glm::mat4 localTransform(1.0f);
 
 		if (node.matrix.size() == 16) {
@@ -269,8 +486,74 @@ private:
 			scene.instances.push_back(instance);
 		}
 
+		if (node.light > -1 && node.light < static_cast<int>(model.lights.size())) {
+			Light& light = scene.lights[node.light];
+
+			glm::vec4 worldDir = globalTransform * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
+			light.direction = Vector3f(worldDir.x, worldDir.y, worldDir.z);
+
+			light.position = Vector3f(globalTransform[3][0], globalTransform[3][1], globalTransform[3][2]);
+		}
+
+		if (node.camera > -1 && node.camera < static_cast<int>(model.cameras.size())) {
+			CameraData& cam = scene.dynamicInfo.camera;
+			cam.position = Vector3f(globalTransform[3][0], globalTransform[3][1], globalTransform[3][2]);
+
+			glm::vec4 worldForward = globalTransform * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
+			glm::vec4 worldUp = globalTransform * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+
+			cam.direction = Vector3f(worldForward.x, worldForward.y, worldForward.z);
+			cam.up = Vector3f(worldUp.x, worldUp.y, worldUp.z);
+		}
+
 		for (int childIndex : node.children) {
-			processNode(model, model.nodes[childIndex], globalTransform, scene);
+			processNode(model.nodes[childIndex], globalTransform, scene);
+		}
+	}
+
+
+
+	VkFormat findTextureFormat(const TextureData& tex, bool ifSRGB) {
+		uint32_t bits = tex.bits;
+
+		switch (bits){
+		case 8:
+			return ifSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
+		case 16:
+			return ifSRGB ? VK_FORMAT_R16G16B16A16_UNORM : VK_FORMAT_R16G16B16A16_SFLOAT;
+		case 32:
+			return VK_FORMAT_R32G32B32A32_SFLOAT;
+		default:
+			throw std::runtime_error("The texture format is not supported");
+		}
+	}
+
+	VkFilter glFilterToVk(int glFilter) {
+		switch (glFilter){
+		case TINYGLTF_TEXTURE_FILTER_NEAREST:
+		case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST:
+		case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR:
+			return VK_FILTER_NEAREST;
+			
+		case TINYGLTF_TEXTURE_FILTER_LINEAR:
+		case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR:
+		case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST:
+			return VK_FILTER_LINEAR;
+
+		default:
+			return VK_FILTER_LINEAR;
+		}
+	}
+
+	VkSamplerAddressMode glWrapToVk(int glWrap) {
+		switch (glWrap){
+		case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
+			return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		case TINYGLTF_TEXTURE_WRAP_MIRRORED_REPEAT:
+			return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+		case TINYGLTF_TEXTURE_WRAP_REPEAT:
+		default:
+			return VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		}
 	}
 
@@ -356,6 +639,10 @@ private:
 		return light.area * PI * luminance;
 	}
 
+	
+private:
+	Model model;
+	tinygltf::TinyGLTF loader;
 };
 
 	

@@ -1,5 +1,9 @@
 #include "RTPipeline.h"
 
+#include "Context.h"
+#include "DescriptorManager.h"
+#include "ShaderManager.h"
+
 RTPipeline::RTPipeline(Context& context) :_context(context) {}
 
 void RTPipeline::init() {

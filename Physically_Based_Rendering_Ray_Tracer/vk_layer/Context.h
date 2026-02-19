@@ -3,11 +3,6 @@
 
 #include "base/base.h"
 #include "util/pstd.h"
-#include "Buffer.h"
-#include "ASManager.h"
-#include "ShaderManager.h"
-#include "DescriptorManager.h"
-#include "RTPipeline.h"
 
 #include <functional>
 #include <memory>

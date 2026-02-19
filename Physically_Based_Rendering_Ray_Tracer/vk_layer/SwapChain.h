@@ -3,7 +3,6 @@
 
 #include "base/base.h"
 #include "util/pstd.h"
-#include "SyncObject.h"
 
 
 struct GLFWwindow;

@@ -1,5 +1,9 @@
 #include "ShaderManager.h"
 
+#include "util/FileOp.h"
+#include "Context.h"
+#include "VkMemoryAllocator.h"
+
 ShaderModule::ShaderModule(VkDevice device, VkShaderModule shaderModule):_device(device), _shaderModule(shaderModule) {}
 
 

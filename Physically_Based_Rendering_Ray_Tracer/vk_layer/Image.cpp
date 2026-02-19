@@ -1,4 +1,7 @@
 #include "vk_layer/Image.h"
+
+#include "CommandPool.h"
+
 #include <stdexcept>
 
 Image::Image(Image&& other) noexcept: _device(other._device), _memory(other._memory), _image(other._image), _imageView(other._imageView), extent(other.extent), tiling(other.tiling), layout(other.layout), format(other.format), size(other.size), map_address(other.map_address) {

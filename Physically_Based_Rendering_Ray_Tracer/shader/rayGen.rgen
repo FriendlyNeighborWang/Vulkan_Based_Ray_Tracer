@@ -6,8 +6,11 @@
 #include "../base/shader_base.h"
 #include "./common/shaderCommon.glslh"
 
-layout(binding = BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, set = RAY_TRACING_DYNAMIC_SET) uniform SceneDynamicInfo{
-	vec4 padding;
+layout(binding = BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, set = RAY_TRACING_DYNAMIC_SET, scalar) uniform SceneDynamicInfo{
+	CameraData camera;
+	uint samples_per_pixel;
+	uint iteration_depth;
+	vec2 _padding;
 } dynamicInfo;
 layout(binding = BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, set = RAY_TRACING_IMAGE_SET, rgba32f) uniform image2D storageImage;
 layout(binding = BINDING_RAY_TRACING_TLAS, set = RAY_TRACING_UNIFORM_SET) uniform accelerationStructureEXT tlas;
@@ -27,13 +30,19 @@ void main(){
 		return;
 	}
 
-	const vec3 cameraOrigin = vec3(-0.001, 1.0, 6.0);
-	const float fovVerticalSlope = 1.0/5.0;
+	const vec3 cameraOrigin = dynamicInfo.camera.position;
+	const vec3 cameraForward = normalize(dynamicInfo.camera.direction);
+	const vec3 cameraUp = normalize(dynamicInfo.camera.up);
+	const vec3 cameraRight = normalize(cross(cameraForward, cameraUp));
+
+	const float fovVerticalSlope = tan(dynamicInfo.camera.yfov * 0.5);
+	const float aspectRatio = float(resolution.x)/float(resolution.y);
+
+
+	const uint NUM_SAMPLES = dynamicInfo.samples_per_pixel;
+	const uint NUM_DEPTH = dynamicInfo.iteration_depth;
 
 	vec3 summedPixelColor = vec3(0.0);
-	const int NUM_SAMPLES = 64;
-
-
 
 	for(int sampleIdx = 0; sampleIdx < NUM_SAMPLES; sampleIdx++){
 		pld.rngState = uint((pushConstants.sample_batch * NUM_SAMPLES + sampleIdx) * resolution.y * resolution.x + pixel.y * resolution.x + pixel.x);
@@ -46,25 +55,27 @@ void main(){
 
 		const vec2 randomPixelCenter = vec2(pixel) + vec2(0.5) + 0.375 * randomGaussian(pld.rngState);
 		const vec2 screenUV = vec2((2.0 * randomPixelCenter.x - resolution.x)/resolution.y,
-								  -(2.0 * randomPixelCenter.y - resolution.y)/resolution.y);
+								  (2.0 * randomPixelCenter.y - resolution.y)/resolution.y);
 
-		vec3 rayDirection = vec3(fovVerticalSlope * screenUV.x, fovVerticalSlope * screenUV.y, -1.0);
-		rayDirection = normalize(rayDirection);
+		vec3 rayDirection = normalize(
+		cameraForward 
+		+ fovVerticalSlope * screenUV.x * cameraRight
+		- fovVerticalSlope * screenUV.y * cameraUp
+		);
 
-		vec3 accumulatedRayColor = vec3(1.0);
 
-		for(int tracedSegments = 0; tracedSegments < 16; tracedSegments++){
+		for(int tracedSegments = 0; tracedSegments < NUM_DEPTH; tracedSegments++){
 			traceRayEXT(
 				tlas,
-				gl_RayFlagsOpaqueEXT,
+				gl_RayFlagsNoneEXT,
 				0XFF,
 				0,
 				0,
 				0,
 				rayOrigin,
-				0.0,
+				dynamicInfo.camera.znear,
 				rayDirection,
-				10000.0,
+				dynamicInfo.camera.zfar,
 				0
 			);
 
@@ -79,11 +90,14 @@ void main(){
 		summedPixelColor += pld.radiance;
 	}
 
-	vec3 averagePixelColor = summedPixelColor/float(NUM_SAMPLES);
+	vec3 averagePixelColor = summedPixelColor / float(NUM_SAMPLES);
+
 	if(pushConstants.sample_batch != 0){
 		const vec3 previousAverageColor = imageLoad(storageImage, pixel).rgb;
+
 		averagePixelColor = (pushConstants.sample_batch  * previousAverageColor + averagePixelColor)/(pushConstants.sample_batch + 1);
 	}
+
 
 	imageStore(storageImage, pixel, vec4(averagePixelColor, 0.0));
 

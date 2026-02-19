@@ -71,7 +71,7 @@ public:
 		if (it != timers.end()) {
 			int current_fps = it->second.get_fps();
 			if (last_fps != current_fps) {
-				LOG_STREAM("[ Timer:" + name + "] FPS: ") << current_fps << std::endl;
+				LOG_STREAM("[ Timer:" + name + "] Current FPS: ") << current_fps << std::endl;
 				last_fps = current_fps;
 			}
 			

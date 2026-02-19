@@ -1,7 +1,11 @@
 #include "vk_layer/SwapChain.h"
-#include "vk_layer/Context.h"
-#include "vk_layer/Image.h"
+
 #include "util/math.h"
+#include "util/pstd.h"
+#include "vk_layer/Image.h"
+#include "vk_layer/Context.h"
+#include "vk_layer/CommandPool.h"
+#include "vk_layer/SyncObject.h"
 
 #include <GLFW/glfw3.h>
 #include <stdexcept>

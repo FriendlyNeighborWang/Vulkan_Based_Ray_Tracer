@@ -1,5 +1,12 @@
 #include "VkMemoryAllocator.h"
 
+#include "vk_layer/Buffer.h"
+#include "vk_layer/Context.h"
+#include "vk_layer/Texture.h"
+#include "vk_layer/CommandPool.h"
+
+#include "graphics/Scene.h"
+
 VkMemoryAllocator::VkMemoryAllocator(Context& context):_context(context){}
 
 VkMemoryAllocator::~VkMemoryAllocator() {
@@ -176,6 +183,8 @@ void VkMemoryAllocator::copy_to_image(CommandBuffer& cmdBuffer, Image& srcImage,
 }
 
 
+
+
 void VkMemoryAllocator::blit_image(CommandBuffer& cmdBuffer, VkImage srcImage, VkImageLayout srcLayout, VkExtent2D srcExtent, VkImage dstImage, VkImageLayout dstLayout, VkExtent2D dstExtent, VkFilter filter) const {
 	VkImageBlit blitRegion{};
 
@@ -205,6 +214,79 @@ void VkMemoryAllocator::blit_image(CommandBuffer& cmdBuffer, VkImage srcImage, V
 		filter
 	);
 }
+
+pstd::vector<Texture> VkMemoryAllocator::create_textures(const pstd::vector<TextureData>& infos, pstd::vector<Sampler>& samplers) {
+	pstd::vector<Texture> textures;
+	textures.reserve(infos.size());
+
+	pstd::vector<Buffer> stagingBuffers;
+	stagingBuffers.reserve(infos.size());
+
+	CommandBuffer cmdBuffer = _context.cmdPool().get_command_buffer();
+	cmdBuffer.begin(true);
+
+	for (const auto& info : infos) {
+		Buffer stagingBuffer = create_buffer(
+			info.size,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+		);
+
+		Image image = create_image(
+			VkExtent2D{ info.width, info.height },
+			info.format,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_SAMPLED_BIT |
+			VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+		);
+
+		image.transition_layout(
+			_context, cmdBuffer,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			0, VK_ACCESS_TRANSFER_WRITE_BIT,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT
+		);
+
+		copy_to_buffer(info.data, info.size, stagingBuffer);
+
+		copy_to_image(cmdBuffer, stagingBuffer, image);
+
+		image.transition_layout(
+			_context, cmdBuffer,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_ACCESS_TRANSFER_WRITE_BIT, 
+			VK_ACCESS_SHADER_READ_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
+			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR
+		);
+
+		stagingBuffers.push_back(std::move(stagingBuffer));
+		textures.push_back(Texture(_context, std::move(image), samplers[info.samplerIdx]));
+	}
+	cmdBuffer.end_and_submit(_context.gc_queue(), true);
+
+	return textures;
+}
+
+
+void VkMemoryAllocator::memory_barrier(CommandBuffer& cmdBuffer, VkAccessFlags srcAccess, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) {
+	VkMemoryBarrier barrier{};
+	barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+	barrier.srcAccessMask = srcAccess;
+	barrier.dstAccessMask = dstAccess;
+
+	vkCmdPipelineBarrier(
+		cmdBuffer,
+		srcStage, dstStage,
+		0,
+		1, &barrier,
+		0, nullptr,
+		0, nullptr
+	);
+}
+
 
 
 VkDeviceMemory VkMemoryAllocator::allocate_memory(VkMemoryRequirements memReq, VkMemoryPropertyFlags properties) const{

@@ -2,7 +2,8 @@
 #define VULKAN_COMPUTE_PIPELINE
 
 #include "base/base.h"
-#include "Context.h"
+#include "util/pstd.h"
+#include "vk_layer/ShaderManager.h"
 
 class ComputePipeline {
 public:

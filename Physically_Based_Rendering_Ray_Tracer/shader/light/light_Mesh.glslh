@@ -2,7 +2,7 @@
 #define GLSL_LIGHT_MESH_H
 
 #extension GL_GOOGLE_include_directive : require
-#include "../common/closestHitCommon.glslh"
+#include "../common/hitShaderCommon.glslh"
 
 float evaluateMeshLightPDF(uint lightIdx, vec3 lightSamplePoint, vec3 shadingPoint, vec3 lightNormal){
 	

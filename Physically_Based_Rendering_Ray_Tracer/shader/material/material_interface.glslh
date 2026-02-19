@@ -7,7 +7,7 @@
 // shader管理思路，我们不只使用一套material，虽然都可以被建模成Principle BRDF，但是不透明、半透明、透明材质可以被分开建模，
 // 然后相关材质可以被存储在不透明的Material Buffer，这样就可以用一个custom index在不同material buffer中索引来表示出不同的material
 
-float evaluateMaterialPDF(vec3 N, vec3 V, vec3 L, Material material){
+float evaluateMaterialPDF(vec3 N, vec3 V, vec3 L, MaterialSample material){
 	float pdf;
 
 	switch(material.materialType){
@@ -24,7 +24,7 @@ float evaluateMaterialPDF(vec3 N, vec3 V, vec3 L, Material material){
 }
 
 
-vec3 sampleMaterial(vec3 N, vec3 V, Material material,  inout uint rngState){
+vec3 sampleMaterial(vec3 N, vec3 V, MaterialSample material,  inout uint rngState){
 	
 	vec3 result;
 	
@@ -42,16 +42,16 @@ vec3 sampleMaterial(vec3 N, vec3 V, Material material,  inout uint rngState){
 	return result;
 }
 
-vec3 evaluateMaterial(vec3 N, vec3 V, vec3 L, Material material){
+vec3 evaluateMaterial(vec3 N, vec3 V, vec3 L, MaterialSample material){
 	vec3 result;
 
 	switch(material.materialType){
 	case MATERIAL_TYPE_COOK_TORRANCE:
-		result = evaluateCookTorranceBRDF(N, V, L, material.albedo.rgb, material.metallic, material.roughness);
+		result = evaluateCookTorranceBRDF(N, V, L, material.albedo, material.metallic, material.roughness);
 		break;
 
 	default:
-		result = evaluateCookTorranceBRDF(N, V, L, material.albedo.rgb, material.metallic, material.roughness);
+		result = evaluateCookTorranceBRDF(N, V, L, material.albedo, material.metallic, material.roughness);
 		break;
 	}
 
