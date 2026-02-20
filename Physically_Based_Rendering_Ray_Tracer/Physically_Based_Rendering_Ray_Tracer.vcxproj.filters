@@ -147,6 +147,9 @@
     <ClInclude Include="vk_layer\Texture.h">
       <Filter>vk_layer</Filter>
     </ClInclude>
+    <ClInclude Include="graphics\CameraController.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="deps\tlsf\tlsf.c">
@@ -201,14 +204,14 @@
     <ClCompile Include="vk_layer\ComputePipeline.cpp">
       <Filter>vk_layer</Filter>
     </ClCompile>
-    <ClCompile Include="test\graphics_SceneLoader_test.cpp">
-      <Filter>test</Filter>
-    </ClCompile>
     <ClCompile Include="graphics\Scene.cpp">
       <Filter>graphics</Filter>
     </ClCompile>
     <ClCompile Include="vk_layer\Texture.cpp">
       <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="graphics\Window.cpp">
+      <Filter>graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

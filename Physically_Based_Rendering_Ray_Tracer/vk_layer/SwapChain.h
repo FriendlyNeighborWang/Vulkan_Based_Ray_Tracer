@@ -18,7 +18,7 @@ public:
 
 	void recreate(GLFWwindow* window);
 
-	VkResult acquire_next_image(VkSemaphore semaphore, VkFence fence, uint32_t* imageIndex, uint32_t timeout = UINT64_MAX);
+	VkResult acquire_next_image(Semaphore& signalSemaphore, uint32_t* imageIndex, uint32_t timeout = UINT64_MAX);
 
 	static bool check_device_swapchain_support(VkPhysicalDevice device, VkSurfaceKHR surface);
 
@@ -51,6 +51,8 @@ private:
 	pstd::vector<VkImage> _images;
 	pstd::vector<VkImageView> _views;
 	pstd::vector<VkImageLayout> _layouts;
+
+
 	VkFormat _format;
 	VkExtent2D _extent;
 

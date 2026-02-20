@@ -107,9 +107,13 @@ int main() {
 	// Scene scene = sceneLoader.LoadScene("resource/cornell_box/scene.gltf");
 	
 
+	// Create Renderer
+	Renderer renderer(context, window, swapchain, scene);
+
 
 	// Build Acceleration Structure
 	TLAS accelerationStructure = context.asManager().get_tlas(scene);
+
 
 	// Import Shader 
 	context.shaderManager().add_raygen_shader("./shader/spv/rayGen.rgen.spv");
@@ -117,50 +121,15 @@ int main() {
 	context.shaderManager().add_miss_shader("./shader/spv/shadowRayMiss.rmiss.spv");
 	context.shaderManager().add_hit_group_shader("./shader/spv/closestHit.rchit.spv", "./shader/spv/alphaTest.rahit.spv");
 	context.shaderManager().add_hit_group_shader("./shader/spv/shadowRayHit.rchit.spv", "./shader/spv/alphaTest.rahit.spv");
-	
 
 	context.shaderManager().build_shader_stages_and_shader_groups();
 
 	// Create Descriptor Set & Resource
 	// Allocate Image & Image Layout Transition to GENERAL
-
-	Image renderTarget = context.memAllocator().create_image(
-		swapchain.getExtent(),
-		VK_FORMAT_R32G32B32A32_SFLOAT,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-	);
-
-	Image ldrImage = context.memAllocator().create_image(
-		swapchain.getExtent(),
-		VK_FORMAT_R8G8B8A8_UNORM,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-	);
-
-	{
-		CommandBuffer cmdBuffer = context.cmdPool().get_command_buffer();
-		cmdBuffer.begin();
-		renderTarget.transition_layout(
-			context, cmdBuffer,
-			VK_IMAGE_LAYOUT_GENERAL,
-			0, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR
-		);
-
-		ldrImage.transition_layout(
-			context, cmdBuffer,
-			VK_IMAGE_LAYOUT_GENERAL,
-			0, VK_ACCESS_SHADER_WRITE_BIT,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
-		);
-
-		cmdBuffer.end_and_submit(context.gc_queue(), true);
-	}
+	renderer.create_images();
+	const auto& hdrImages = renderer.get_hdrImages();
+	const auto& ldrImages = renderer.get_ldrImages();
+	
 
 	// Scene Dynamic & Static Info
 	Buffer& dynamicSceneInfoBuffer = scene.get_dynamic_scene_info(context);
@@ -215,38 +184,44 @@ int main() {
 
 	compute_tone_mapping_layout.build();
 
-	// PushConstant & Allocate Descriptor Set & Write Descriptor Set
+	// Allocate Descriptor Set & Write Descriptor Set
 
-	context.descriptorManager().init_descriptor_pool(4);
-	DescriptorSet& rtDynamicSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_DYNAMIC_SET_LAYOUT", "RAY_TRACING_DYNAMIC_SET");
-	DescriptorSet& rtImageSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_IMAGE_SET_LAYOUT", "RAY_TRACING_IMAGE_SET");
-	DescriptorSet& rtUniformSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_UNIFORM_SET_LAYOUT", "RAY_TRACING_UNIFORM_SET");
-	DescriptorSet& computeToneMappingSet = context.descriptorManager().allocate_descriptor_set("COMPUTE_TONE_MAPPING_SET_LAYOUT","COMPUTE_TONE_MAPPING_SET");
-
-
-	context.descriptorManager().descriptor_write("RAY_TRACING_DYNAMIC_SET", BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, dynamicSceneInfoBuffer);
-
-
-	context.descriptorManager().descriptor_write("RAY_TRACING_IMAGE_SET", BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, renderTarget);
+	context.descriptorManager().init_descriptor_pool(2 + 2 * MAX_FRAMES_IN_FLIGHT);
+	DescriptorSet& rtDynamicSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_DYNAMIC_SET_LAYOUT");
+	DescriptorSet& rtUniformSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_UNIFORM_SET_LAYOUT");
+	pstd::vector<DescriptorSet*> imageSets(MAX_FRAMES_IN_FLIGHT);
+	pstd::vector<DescriptorSet*> toneMappingSets(MAX_FRAMES_IN_FLIGHT);
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+		imageSets[i] = &context.descriptorManager().allocate_descriptor_set("RAY_TRACING_IMAGE_SET_LAYOUT");
+		toneMappingSets[i] = &context.descriptorManager().allocate_descriptor_set("COMPUTE_TONE_MAPPING_SET_LAYOUT");
+	}
 
 
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_SCENE_STATIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, staticSceneInfoBuffer);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_TLAS, accelerationStructure);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vertexBuffer);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, indexBuffer);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, materialBuffer);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, geometryBuffer);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_LIGHT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, lightBuffer);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_TEXCOORD0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, texcoordBuffer);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_TEXTURE_ARRAY, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, textures);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_NORMAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, normalBuffer);
-	context.descriptorManager().descriptor_write("RAY_TRACING_UNIFORM_SET", BINDING_RAY_TRACING_TANGENT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, tangentBuffer);
+	rtDynamicSet.descriptor_write(BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, dynamicSceneInfoBuffer);
 
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_SCENE_STATIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, staticSceneInfoBuffer);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_TLAS, accelerationStructure);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vertexBuffer);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, indexBuffer);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, materialBuffer);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, geometryBuffer);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_LIGHT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, lightBuffer);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_TEXCOORD0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, texcoordBuffer);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_TEXTURE_ARRAY, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, textures);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_NORMAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, normalBuffer);
+	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_TANGENT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, tangentBuffer);
 
-	context.descriptorManager().descriptor_write("COMPUTE_TONE_MAPPING_SET", BINDING_COMPUTE_TONE_MAPPING_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, renderTarget);
-	context.descriptorManager().descriptor_write("COMPUTE_TONE_MAPPING_SET", BINDING_COMPUTE_TONE_MAPPING_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, ldrImage);
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+		imageSets[i]->descriptor_write(BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, hdrImages[i]);
+
+		toneMappingSets[i]->descriptor_write(BINDING_COMPUTE_TONE_MAPPING_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, hdrImages[i]);
+		toneMappingSets[i]->descriptor_write(BINDING_COMPUTE_TONE_MAPPING_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, ldrImages[i]);
+	}
+
 
 	context.descriptorManager().update_descriptor_set();
+
+
 
 	// Create Pipeline
 	context.rtPipeline().create_pipeline(context.descriptorManager().get_descriptor_set_layouts({ "RAY_TRACING_DYNAMIC_SET_LAYOUT", "RAY_TRACING_IMAGE_SET_LAYOUT", "RAY_TRACING_UNIFORM_SET_LAYOUT"}));
@@ -254,18 +229,17 @@ int main() {
 	ComputePipeline tmPipeline(context);
 	tmPipeline.create_pipeline("./shader/spv/tone_mapping.comp.spv", context.descriptorManager().get_descriptor_set_layouts({ "COMPUTE_TONE_MAPPING_SET_LAYOUT" }), sizeof(ToneMappingPushConstants));
 
-	// Build Shader Binding Tbale & Get Shader Group Regions
+	// Build Shader Binding Table
 	context.shaderManager().build_shader_binding_table(context.rtPipeline());
 
 
-	Renderer renderer(context, window, swapchain, scene);
-
-	renderer.register_image("renderTarget", renderTarget);
-	renderer.register_image("ldrImage", ldrImage);
-	renderer.register_descriptor_set("rtImageSet", rtImageSet);
+	// Register Resource 
 	renderer.register_descriptor_set("rtDynamicSet", rtDynamicSet);
 	renderer.register_descriptor_set("rtUniformSet", rtUniformSet);
-	renderer.register_descriptor_set("computeToneMappingSet", computeToneMappingSet);
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+		renderer.register_descriptor_set("rtImageSet" + std::to_string(i), *imageSets[i]);
+		renderer.register_descriptor_set("computeToneMappingSet" + std::to_string(i), *toneMappingSets[i]);
+	}
 	renderer.register_compute_pipeline("tmPipeline", tmPipeline);
 	
 

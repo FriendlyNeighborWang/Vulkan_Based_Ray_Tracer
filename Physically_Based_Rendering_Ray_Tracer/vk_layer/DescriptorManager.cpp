@@ -64,21 +64,108 @@ void DescriptorSetLayout::build() {
 	_bindings.clear();
 }
 
-DescriptorSet::DescriptorSet(VkDevice device, VkDescriptorSet descriptorSet):_device(device), _descriptorSet(descriptorSet){}
+DescriptorSet::DescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, DescriptorManager* manager):_device(device), _descriptorSet(descriptorSet), _manager(manager){}
 
-DescriptorSet::DescriptorSet(DescriptorSet&& other) noexcept: _descriptorSet(other._descriptorSet), _device(other._device){
+DescriptorSet::DescriptorSet(DescriptorSet&& other) noexcept: _descriptorSet(other._descriptorSet), _device(other._device), _manager(other._manager){
 	other._descriptorSet = VK_NULL_HANDLE;
 	other._device = VK_NULL_HANDLE;
+	other._manager = nullptr;
 }
 
 DescriptorSet& DescriptorSet::operator=(DescriptorSet&& other) noexcept {
+	
 	_descriptorSet = other._descriptorSet;
 	_device = other._device;
+	_manager = other._manager;
 
 	other._descriptorSet = VK_NULL_HANDLE;
 	other._device = VK_NULL_HANDLE;
+	other._manager = nullptr;
 
 	return *this;
+}
+
+void DescriptorSet::descriptor_write(uint32_t binding, VkDescriptorType type, const Image& image) {
+	auto& writesImage = _manager->writesImage;
+	auto& writes = _manager->writes;
+
+	writesImage.push_back(VkDescriptorImageInfo{});
+	writesImage.back().imageLayout = image.layout;
+	writesImage.back().imageView = image;
+
+	writes.push_back(VkWriteDescriptorSet{});
+	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes.back().dstSet = _descriptorSet;
+	writes.back().dstBinding = binding;
+	writes.back().dstArrayElement = 0;
+	writes.back().descriptorType = type;
+	writes.back().descriptorCount = 1;
+	writes.back().pImageInfo = &writesImage.back();
+
+}
+
+void DescriptorSet::descriptor_write(uint32_t binding, VkDescriptorType type, const Buffer& buffer) {
+	auto& writesBuffer = _manager->writesBuffer;
+	auto& writes = _manager->writes;
+
+	writesBuffer.push_back(VkDescriptorBufferInfo{});
+	writesBuffer.back().buffer = buffer;
+	writesBuffer.back().offset = 0;
+	writesBuffer.back().range = VK_WHOLE_SIZE;
+
+	writes.push_back(VkWriteDescriptorSet{});
+	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes.back().dstSet = _descriptorSet;
+	writes.back().dstBinding = binding;
+	writes.back().dstArrayElement = 0;
+	writes.back().descriptorType = type;
+	writes.back().descriptorCount = 1;
+	writes.back().pBufferInfo = &writesBuffer.back();
+
+}
+
+void DescriptorSet::descriptor_write(uint32_t binding, const VkAccelerationStructureKHR& as) {
+	auto& writesAS = _manager->writesAS;
+	auto& writes = _manager->writes;
+
+	writesAS.push_back(VkWriteDescriptorSetAccelerationStructureKHR{});
+	writesAS.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+	writesAS.back().accelerationStructureCount = 1;
+	writesAS.back().pAccelerationStructures = &as;
+
+
+	writes.push_back(VkWriteDescriptorSet{});
+	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes.back().dstSet = _descriptorSet;
+	writes.back().dstBinding = binding;
+	writes.back().dstArrayElement = 0;
+	writes.back().descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+	writes.back().descriptorCount = 1;
+	writes.back().pNext = &writesAS.back();
+}
+
+void DescriptorSet::descriptor_write(uint32_t binding, VkDescriptorType type, const pstd::vector<Texture>& textures) {
+	auto& writesTexture = _manager->writesTexture;
+	auto& writes = _manager->writes;
+
+	writesTexture.clear();
+	writesTexture.reserve(textures.size());
+	for (const auto& texture : textures) {
+		writesTexture.push_back(VkDescriptorImageInfo{});
+		writesTexture.back().imageLayout = texture.image().layout;
+		writesTexture.back().imageView = texture.image();
+		writesTexture.back().sampler = texture.sampler();
+	}
+
+	writes.push_back(VkWriteDescriptorSet{});
+	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writes.back().dstSet = _descriptorSet;
+	writes.back().dstBinding = binding;
+	writes.back().dstArrayElement = 0;
+	writes.back().descriptorType = type;
+	writes.back().descriptorCount = static_cast<uint32_t>(writesTexture.size());
+	writes.back().pImageInfo = writesTexture.data();
+
 }
 
 
@@ -116,11 +203,14 @@ void DescriptorManager::init_descriptor_pool(uint32_t max_sets_num) {
 		poolSizes.push_back(poolSize);
 	}
 
+	uint32_t maxSets = static_cast<uint32_t>(((max_sets_num == 0) ? layouts.size() : max_sets_num));
+	sets.reserve(maxSets);
+
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	poolInfo.pPoolSizes = poolSizes.data();
-	poolInfo.maxSets = static_cast<uint32_t>(((max_sets_num == 0) ? layouts.size() : max_sets_num));
+	poolInfo.maxSets = maxSets;
 	poolInfo.flags = 0;
 	poolInfo.pNext = nullptr;
 	
@@ -128,7 +218,8 @@ void DescriptorManager::init_descriptor_pool(uint32_t max_sets_num) {
 		throw std::runtime_error("DescriptorManager::Failed to create Descriptor pool");
 }
 
-DescriptorSet& DescriptorManager::allocate_descriptor_set(const std::string& layout_name, const std::string& set_name) {
+
+DescriptorSet& DescriptorManager::allocate_descriptor_set(const std::string& layout_name) {
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = descriptorPool;
@@ -140,8 +231,8 @@ DescriptorSet& DescriptorManager::allocate_descriptor_set(const std::string& lay
 	if (vkAllocateDescriptorSets(_context, &allocInfo, &set) != VK_SUCCESS)
 		throw std::runtime_error("DescriptorManager::Failed to allocate descriptor set");
 
-	sets.insert({ set_name, DescriptorSet(_context, set) });
-	return sets.find(set_name)->second;
+	sets.push_back(DescriptorSet(_context, set, this));
+	return sets.back();
 }
 
 pstd::vector<VkDescriptorSetLayout> DescriptorManager::get_descriptor_set_layouts(const pstd::vector<std::string>& layout_names) {
@@ -151,78 +242,6 @@ pstd::vector<VkDescriptorSetLayout> DescriptorManager::get_descriptor_set_layout
 		vkLayouts[i] = layouts.find(layout_names[i])->second;
 	}
 	return vkLayouts;
-}
-
-void DescriptorManager::descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type, const Image& image) {
-
-	writesImage.push_back(VkDescriptorImageInfo{});
-	writesImage.back().imageLayout = image.layout;
-	writesImage.back().imageView = image;
-
-	writes.push_back(VkWriteDescriptorSet{});
-	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writes.back().dstSet = sets.find(set_name)->second;
-	writes.back().dstBinding = binding;
-	writes.back().dstArrayElement = 0;
-	writes.back().descriptorType = type;
-	writes.back().descriptorCount = 1;
-	writes.back().pImageInfo = &writesImage.back();
-	
-}
-
-void DescriptorManager::descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type, const Buffer& buffer) {
-	writesBuffer.push_back(VkDescriptorBufferInfo{});
-	writesBuffer.back().buffer = buffer;
-	writesBuffer.back().offset = 0;
-	writesBuffer.back().range = VK_WHOLE_SIZE;
-
-	writes.push_back(VkWriteDescriptorSet{});
-	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writes.back().dstSet = sets.find(set_name)->second;
-	writes.back().dstBinding = binding;
-	writes.back().dstArrayElement = 0;
-	writes.back().descriptorType = type;
-	writes.back().descriptorCount = 1;
-	writes.back().pBufferInfo = &writesBuffer.back();
-
-}
-
-void DescriptorManager::descriptor_write(const std::string& set_name, uint32_t binding, const VkAccelerationStructureKHR& as) {
-	writesAS.push_back(VkWriteDescriptorSetAccelerationStructureKHR{});
-	writesAS.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-	writesAS.back().accelerationStructureCount = 1;
-	writesAS.back().pAccelerationStructures = &as;
-
-
-	writes.push_back(VkWriteDescriptorSet{});
-	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writes.back().dstSet = sets.find(set_name)->second;
-	writes.back().dstBinding = binding;
-	writes.back().dstArrayElement = 0;
-	writes.back().descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-	writes.back().descriptorCount = 1;
-	writes.back().pNext = &writesAS.back();
-}
-
-void DescriptorManager::descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type, const pstd::vector<Texture>& textures) {
-	writesTexture.clear();
-	writesTexture.reserve(textures.size());
-	for (const auto& texture : textures) {
-		writesTexture.push_back(VkDescriptorImageInfo{});
-		writesTexture.back().imageLayout = texture.image().layout;
-		writesTexture.back().imageView = texture.image();
-		writesTexture.back().sampler = texture.sampler();
-	}
-
-	writes.push_back(VkWriteDescriptorSet{});
-	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writes.back().dstSet = sets.find(set_name)->second;
-	writes.back().dstBinding = binding;
-	writes.back().dstArrayElement = 0;
-	writes.back().descriptorType = type;
-	writes.back().descriptorCount = static_cast<uint32_t>(writesTexture.size());
-	writes.back().pImageInfo = writesTexture.data();
-	
 }
 
 

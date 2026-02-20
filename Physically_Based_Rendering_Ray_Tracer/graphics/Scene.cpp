@@ -207,9 +207,7 @@ Buffer& Scene::get_tangent_buffer(Context& context) {
 	return tangentBuffer;
 }
 
-void Scene::update_dynamic_scene_info() {
-	
-}
+
 
 Buffer& Scene::get_dynamic_scene_info(Context& context) {
 	if (if_dynamicSceneInfoBuffer_aval) return dynamicSceneInfoBuffer;

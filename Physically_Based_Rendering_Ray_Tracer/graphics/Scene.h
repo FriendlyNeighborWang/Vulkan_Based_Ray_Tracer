@@ -124,7 +124,6 @@ struct Scene {
 	Buffer& get_normal_buffer(Context& context);
 	Buffer& get_tangent_buffer(Context& context);
 
-	void update_dynamic_scene_info();
 	Buffer& get_dynamic_scene_info(Context& context);
 	Buffer& get_static_scene_info(Context& context);
 
@@ -155,6 +154,12 @@ struct Scene {
 	};
 
 	struct SceneDynamicInfo {
+
+		static constexpr uint32_t camera_data_offset() { return static_cast<uint32_t>(offsetof(SceneDynamicInfo, camera)); }
+		static constexpr uint32_t samplers_per_pixel_offset() { return static_cast<uint32_t>(offsetof(SceneDynamicInfo, samples_per_pixel)); }
+		static constexpr uint32_t iteration_depth_offset() { return static_cast<uint32_t>(offsetof(SceneDynamicInfo, iteration_depth)); }
+
+
 		// Camera
 		CameraData camera;
 

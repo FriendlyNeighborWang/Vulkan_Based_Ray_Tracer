@@ -39,7 +39,7 @@ void CommandBuffer::end_and_submit(VkQueue queue, bool if_waitIdle) {
 		vkQueueWaitIdle(queue);
 }
 
-void CommandBuffer::end_and_submit(VkQueue queue, const pstd::vector<VkSemaphore>& waitSemaphores, VkPipelineStageFlags waitStages, const pstd::vector<VkSemaphore>& signalSemaphores, VkFence fence) {
+void CommandBuffer::end_and_submit(VkQueue queue, const pstd::vector<VkSemaphore>& waitSemaphores, const pstd::vector<VkPipelineStageFlags>& waitStages, const pstd::vector<VkSemaphore>& signalSemaphores, VkFence fence) {
 	if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS)
 		throw std::runtime_error("CommandBuffer:: Failed to end commandbuffer");
 
@@ -51,7 +51,7 @@ void CommandBuffer::end_and_submit(VkQueue queue, const pstd::vector<VkSemaphore
 	submitInfo.pWaitSemaphores = waitSemaphores.data();
 	submitInfo.signalSemaphoreCount = signalSemaphores.size();
 	submitInfo.pSignalSemaphores = signalSemaphores.data();
-	submitInfo.pWaitDstStageMask = &waitStages;
+	submitInfo.pWaitDstStageMask = waitStages.data();
 	
 	
 	if (vkQueueSubmit(queue, 1, &submitInfo, fence) != VK_SUCCESS)

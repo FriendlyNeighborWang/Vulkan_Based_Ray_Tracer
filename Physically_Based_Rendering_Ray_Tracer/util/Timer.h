@@ -40,6 +40,13 @@ public:
 	float get_total_duration() const { return totalDuration; }
 	float get_average_duration() const { return count > 0 ? totalDuration / count : 0.0f; }
 	float get_fps() const { return realtimeFps; }
+
+	float get_delta() {
+		auto now = Clock::now();
+		float delta = std::chrono::duration<float>(now - lastDeltaTime).count();
+		lastDeltaTime = now;
+		return delta;
+	}
 private:
 	Timer(){}
 
@@ -51,6 +58,8 @@ private:
 	TimePoint lastFpsUpdateTime = Clock::now();
 	uint32_t recentCount = 0;
 	float realtimeFps = 0.0f;
+
+	TimePoint lastDeltaTime = Clock::now();
 };
 
 class TimerManager {

@@ -3,6 +3,7 @@
 
 #include "base/base.h"
 #include "util/Timer.h"
+#include "CameraController.h"
 #include "Window.h"
 
 #include <unordered_map>
@@ -12,7 +13,9 @@ class Renderer {
 public:
 	Renderer(Context& context, Window& window, SwapChain& swapChain, Scene& scene);
 
-	void register_image(std::string name, Image& image);
+	void create_images();
+	const pstd::vector<Image>& get_ldrImages() const { return ldrImages; }
+	const pstd::vector<Image>& get_hdrImages() const { return hdrImages; }
 
 	void register_descriptor_set(std::string name, DescriptorSet& descriptorSet);
 
@@ -25,21 +28,24 @@ private:
 
 	void recreateSwapChain();
 
-	void updateDynamicSceneInfo();
+	void updateDynamicSceneInfo(Timer& timer);
 
 	// Rendering Info
 	pstd::vector<VkStridedDeviceAddressRegionKHR> groupRegions;
 	PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR;
 
 	// Sync Object
-	pstd::vector<Semaphore> swapchainImageAvailableSemaphores;
 	pstd::vector<Semaphore> renderFinishedSemaphores;
+	pstd::vector<Semaphore> imageAvailableSemaphores;
 	pstd::vector<Fence> inFlightFences;
 
 
 	// Resource
-	pstd::vector<CommandBuffer> cmdBuffers;
-	std::unordered_map<std::string, Image*> images;
+	pstd::vector<CommandBuffer> renderCmdBuffers;
+	pstd::vector<Image> hdrImages;
+	pstd::vector<Image> ldrImages;
+	pstd::vector<DescriptorSet*> imageSets;
+	pstd::vector<DescriptorSet*> toneMappingSets;
 	std::unordered_map<std::string, DescriptorSet*> descriptorSets;
 	std::unordered_map<std::string, ComputePipeline*> computePipelines;
 
@@ -50,6 +56,7 @@ private:
 	Context& _context;
 
 	// Else
+	CameraController cameraController;
 	TimerManager timerManager;
 
 	uint32_t currentFrame = 0;

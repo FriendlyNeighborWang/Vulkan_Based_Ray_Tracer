@@ -55,3 +55,20 @@ void Buffer::unmap_memory() {
 	vkUnmapMemory(_device, _memory);
 	map_address = nullptr;
 }
+
+void Buffer::write_buffer(const void* data, VkDeviceSize data_size, VkDeviceSize offset) {
+	bool buffer_mapped;
+	if (map_address) {
+		buffer_mapped = true;
+	}
+	else {
+		buffer_mapped = false;
+		map_memory();
+	}
+
+	if (data_size == 0) data_size = size;
+
+	memcpy(static_cast<std::byte*>(map_address) + offset, data, data_size);
+
+	if (!buffer_mapped) unmap_memory();
+}

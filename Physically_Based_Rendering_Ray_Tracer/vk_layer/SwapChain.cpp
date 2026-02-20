@@ -98,18 +98,21 @@ void SwapChain::recreate(GLFWwindow* window) {
 	_format = surfaceFormat.format;
 	_extent = extent;
 
-	_views.resize(imageCount);
-	_layouts.resize(imageCount);
-	for (uint32_t i = 0; i < _images.size(); ++i) {
-		_views[i] = Image::create_imageview(_context, _images[i], _format, VK_IMAGE_ASPECT_COLOR_BIT);
-		_layouts[i] = VK_IMAGE_LAYOUT_UNDEFINED;
+	_views.reserve(imageCount);
+	_layouts.reserve(imageCount);
+	for (auto& image :_images) {
+		_views.push_back(Image::create_imageview(_context, image, _format, VK_IMAGE_ASPECT_COLOR_BIT));
+		_layouts.push_back(VK_IMAGE_LAYOUT_UNDEFINED);
 	}
 }
 
 
 
-VkResult SwapChain::acquire_next_image(VkSemaphore semaphore, VkFence fence, uint32_t* imageIndex, uint32_t timeout) {
-	return vkAcquireNextImageKHR(_context, swapChain, timeout, semaphore, fence, imageIndex);
+VkResult SwapChain::acquire_next_image(Semaphore& signalSemaphore, uint32_t* imageIndex, uint32_t timeout) {
+
+	VkResult result = vkAcquireNextImageKHR(_context, swapChain, timeout, signalSemaphore, VK_NULL_HANDLE, imageIndex);
+	
+	return result;
 }
 
 
@@ -193,7 +196,8 @@ VkSurfaceFormatKHR SwapChain::chooseSwapSurfaceFormat(const pstd::vector<VkSurfa
 
 VkPresentModeKHR SwapChain::chooseSwapPresentMode(const pstd::vector<VkPresentModeKHR>& availablePresentModes) {
 	for (const auto& availablePresentMode : availablePresentModes) {
-		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+		// if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+		if (availablePresentMode == VK_PRESENT_MODE_FIFO_KHR)
 			return availablePresentMode;
 	}
 	return VK_PRESENT_MODE_FIFO_KHR;

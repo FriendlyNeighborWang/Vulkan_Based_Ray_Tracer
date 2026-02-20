@@ -15,7 +15,7 @@ public:
 	void begin(bool one_time = false);
 
 	void end_and_submit(VkQueue queue, bool if_waitIdle = false);
-	void end_and_submit(VkQueue queue, const pstd::vector<VkSemaphore>& waitSemaphores, VkPipelineStageFlags waitStages, const pstd::vector<VkSemaphore>& signalSemaphores, VkFence fence = VK_NULL_HANDLE);
+	void end_and_submit(VkQueue queue, const pstd::vector<VkSemaphore>& waitSemaphores, const pstd::vector<VkPipelineStageFlags>& waitStages, const pstd::vector<VkSemaphore>& signalSemaphores, VkFence fence = VK_NULL_HANDLE);
 
 	operator const VkCommandBuffer& () const { return cmdBuffer; }
 	

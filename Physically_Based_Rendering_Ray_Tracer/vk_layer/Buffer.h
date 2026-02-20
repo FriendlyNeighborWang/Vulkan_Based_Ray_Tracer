@@ -16,6 +16,8 @@ public:
 
 	void* map_memory();
 	void unmap_memory();
+	void write_buffer(const void* data, VkDeviceSize data_size = 0, VkDeviceSize offset = 0 );
+
 
 	operator const VkBuffer& () const { return _buffer; }
 

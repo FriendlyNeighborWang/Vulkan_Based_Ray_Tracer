@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\include;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\glm\glm;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\build\include;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\stb;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\json;E:\VulkanSDK\1.4.321.1\Include;D:\C++Libiary\glfw-3.4.bin.WIN64\include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\glm\glm;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\stb;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\json;E:\VulkanSDK\1.4.321.1\Include;D:\C++Libiary\glfw-3.4.bin.WIN64\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -113,8 +113,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\assimp\build\lib\Release;D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\glm\lib;D:\C++Libiary\glfw-3.4.bin.WIN64\lib-vc2022;E:\VulkanSDK\1.4.321.1\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>assimp-vc143-mt.lib;glm.lib;glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\glm\lib;D:\C++Libiary\glfw-3.4.bin.WIN64\lib-vc2022;E:\VulkanSDK\1.4.321.1\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glm.lib;glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -140,6 +140,7 @@
     <ClInclude Include="deps\stb\stb_image_write.h" />
     <ClInclude Include="deps\tiny_gltf\tiny_gltf.h" />
     <ClInclude Include="deps\tlsf\tlsf.h" />
+    <ClInclude Include="graphics\CameraController.h" />
     <ClInclude Include="graphics\Scene.h" />
     <ClInclude Include="graphics\Renderer.h" />
     <ClInclude Include="graphics\SceneLoader.h" />
@@ -171,6 +172,7 @@
     <ClCompile Include="deps\tlsf\tlsf.c" />
     <ClCompile Include="graphics\Renderer.cpp" />
     <ClCompile Include="graphics\Scene.cpp" />
+    <ClCompile Include="graphics\Window.cpp" />
     <ClCompile Include="main.cpp" />
     <None Include="resource\Sponza\Sponza.gltf" />
     <CustomBuild Include="shader\alphaTest.rahit">
@@ -184,7 +186,6 @@
     <None Include="shader\light\light_Mesh.glslh">
       <FileType>Document</FileType>
     </None>
-    <ClCompile Include="test\graphics_SceneLoader_test.cpp" />
     <ClCompile Include="test\util_log_test.cpp" />
     <ClCompile Include="test\util_memory_test.cpp" />
     <ClCompile Include="test\util_pstd_test.cpp" />

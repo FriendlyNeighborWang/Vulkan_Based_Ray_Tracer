@@ -41,8 +41,20 @@ public:
 	operator const VkDescriptorSet& () const { return _descriptorSet; }
 	VkDescriptorSet get() const { return _descriptorSet; }
 
+
+	void descriptor_write(uint32_t binding, VkDescriptorType type, const Image& image);
+
+	void descriptor_write(uint32_t binding, VkDescriptorType type, const Buffer& buffer);
+
+	void descriptor_write(uint32_t binding, const VkAccelerationStructureKHR& as);
+
+	// Can only be called for once before every update_descriptor_set() invocation
+	void descriptor_write(uint32_t binding, VkDescriptorType type, const pstd::vector<Texture>& textures);
+
 private:
-	DescriptorSet(VkDevice device, VkDescriptorSet descriptorSet);
+	DescriptorSet(VkDevice device, VkDescriptorSet descriptorSet, DescriptorManager* manager);
+
+	DescriptorManager* _manager = nullptr;
 
 	VkDescriptorSet _descriptorSet = VK_NULL_HANDLE;
 
@@ -51,6 +63,8 @@ private:
 
 
 class DescriptorManager {
+	friend class DescriptorSet;
+
 public:
 	DescriptorManager(Context& context);
 
@@ -63,18 +77,9 @@ public:
 	// Must be called after layout bindings have been added and layouts have been built
 	void init_descriptor_pool(uint32_t max_sets_num);
 
-	DescriptorSet& allocate_descriptor_set(const std::string& layout_name, const std::string& set_name);
+	DescriptorSet& allocate_descriptor_set(const std::string& layout_name);
 
 	pstd::vector<VkDescriptorSetLayout> get_descriptor_set_layouts(const pstd::vector<std::string>& layout_names);
-
-	void descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type, const Image& image);
-	
-	void descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type,  const Buffer& buffer);
-
-	void descriptor_write(const std::string& set_name, uint32_t binding, const VkAccelerationStructureKHR& as);
-
-	// Can only be called for once before every update_descriptor_set() invocation
-	void descriptor_write(const std::string& set_name, uint32_t binding, VkDescriptorType type, const pstd::vector<Texture>& textures);
 
 	void update_descriptor_set();
 	
@@ -87,7 +92,7 @@ private:
 	std::list<VkWriteDescriptorSetAccelerationStructureKHR> writesAS;
 	pstd::vector<VkDescriptorImageInfo> writesTexture;
 
-	std::unordered_map<std::string, DescriptorSet> sets;
+	pstd::vector<DescriptorSet> sets;
 
 	std::unordered_map<std::string, DescriptorSetLayout> layouts;
 
