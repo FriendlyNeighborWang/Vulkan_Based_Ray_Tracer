@@ -3,6 +3,7 @@
 
 #include "light_Mesh.glslh"
 #include "light_Directional.glslh"
+#include "light_SkyBox.glslh"
 
 uint selectLightByPower(inout uint rngState){
 	uint lightCount = staticInfo.lightCount;
@@ -31,30 +32,40 @@ LightSample sampleLight(inout uint rngState){
 
 	switch(lights[result.lightIdx].lightType){
 	case LIGHT_TYPE_MESH:
-		result.pos = sampleMeshLight(result.lightIdx, rngState, result.normal);
+		result.scalar = sampleMeshLight(result.lightIdx, rngState, result.vector);
 		break;
 	case LIGHT_TYPE_DIRECTIONAL:
-		result.normal = sampleDirectionalLight(result.lightIdx);
+		result.vector = sampleDirectionalLight(result.lightIdx);
+		break;
+
+	case LIGHT_TYPE_SKYBOX:
+		result.vector = sampleSkyBoxLight(rngState, result.scalar);
 		break;
 	}
 
 	return result;
 }
 
-float evaluateLightPDF(uint lightIdx, vec3 lightSamplePoint, vec3 shadingPoint, vec3 lightNormal){
+float evaluateLightPDF(uint lightIdx, vec3 direction, float dist, vec3 vector){
 	float pdf = 0.0;
 
 	switch(lights[lightIdx].lightType){
 	case LIGHT_TYPE_MESH:
-		pdf = evaluateMeshLightPDF(lightIdx, lightSamplePoint, shadingPoint, lightNormal);
+		pdf = evaluateMeshLightPDF(lightIdx, direction, dist, vector);
 		break;
 	case LIGHT_TYPE_DIRECTIONAL:
 		pdf = evaluateDirectionalLightPDF();
+		break;
+
+	case LIGHT_TYPE_SKYBOX:
+		pdf = evaluateSkyBoxLightPDF(direction, vector);
 		break;
 	}
 
 
 	return pdf;
 }
+
+
 
 #endif // !GLSL_LIGHT_INTERFACE_H

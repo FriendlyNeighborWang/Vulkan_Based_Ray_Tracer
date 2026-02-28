@@ -52,6 +52,9 @@
     <Filter Include="resource\Sponza">
       <UniqueIdentifier>{aef43334-f92f-4be9-894e-91a65f253142}</UniqueIdentifier>
     </Filter>
+    <Filter Include="resource\transimission test">
+      <UniqueIdentifier>{5679e526-cc15-49b8-9ccc-450eaf3f054e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="util\memory.h">
@@ -150,6 +153,12 @@
     <ClInclude Include="graphics\CameraController.h">
       <Filter>graphics</Filter>
     </ClInclude>
+    <ClInclude Include="graphics\SkyBox.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="deps\stb\stb_image.h">
+      <Filter>deps\stb</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="deps\tlsf\tlsf.c">
@@ -213,6 +222,12 @@
     <ClCompile Include="graphics\Window.cpp">
       <Filter>graphics</Filter>
     </ClCompile>
+    <ClCompile Include="graphics\SkyBox.cpp">
+      <Filter>graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="graphics\SceneLoader.cpp">
+      <Filter>graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="util\Vec.inl">
@@ -254,6 +269,12 @@
     <None Include="shader\light\light_Directional.glslh">
       <Filter>shader\light</Filter>
     </None>
+    <None Include="shader\light\light_SkyBox.glslh">
+      <Filter>shader\light</Filter>
+    </None>
+    <None Include="resource\TransmissionTest\glTF\TransmissionTest.gltf">
+      <Filter>resource\transimission test</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shader\rayGen.rgen">
@@ -275,6 +296,9 @@
       <Filter>shader</Filter>
     </CustomBuild>
     <CustomBuild Include="shader\alphaTest.rahit">
+      <Filter>shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shader\shadowRayAnyHit.rahit">
       <Filter>shader</Filter>
     </CustomBuild>
   </ItemGroup>

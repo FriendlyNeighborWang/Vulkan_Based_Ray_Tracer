@@ -55,6 +55,7 @@ struct Geometry;
 struct Mesh;
 struct MeshInstance;
 struct Scene;
+class SkyBox;
 
 // Util
 class TimerManager;

@@ -4,27 +4,19 @@
 #extension GL_GOOGLE_include_directive : require
 #include "../common/hitShaderCommon.glslh"
 
-float evaluateMeshLightPDF(uint lightIdx, vec3 lightSamplePoint, vec3 shadingPoint, vec3 lightNormal){
+
+float evaluateMeshLightPDF(uint lightIdx, vec3 rayDirection, float dist, vec3 lightNormal){
 	
 	// Geometry
-	vec3 direct_unnorm = lightSamplePoint - shadingPoint;
-	float dist = length(direct_unnorm);
-
-	vec3 rayDirection = direct_unnorm / dist;
-
 	float lightCos = max(abs(dot(rayDirection, lightNormal)), 0.0001);
 
 	float invG = (dist * dist) / lightCos;
 
 	// Select PDf
-	uint lightCount = staticInfo.lightCount;
 	float totalLightPower = staticInfo.totalLightPower;
 
-	float selectPDF = 1.0f;
-
-	if(lightCount > 1){
-		selectPDF = lights[lightIdx].power / totalLightPower;
-	}
+	float selectPDF = lights[lightIdx].power / totalLightPower;
+	
 
 	// Area
 	float areaPdf = 1 / lights[lightIdx].area;

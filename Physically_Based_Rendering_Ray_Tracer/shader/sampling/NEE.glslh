@@ -12,33 +12,36 @@ vec3 evaluateDI(vec3 N, vec3 V, vec3 geoN, vec3 shadingPos, MaterialSample mat, 
 	Light light = lights[lightSample.lightIdx];
 
 	vec3 shadowRayDirection;
+	float dist = 0.0f;
 
-	if(light.lightType != LIGHT_TYPE_DIRECTIONAL){
-		vec3 direct_unnorm = lightSample.pos - shadingPos;
-		float dist = length(direct_unnorm);
+	if(light.lightType != LIGHT_TYPE_DIRECTIONAL && light.lightType != LIGHT_TYPE_SKYBOX){
+		vec3 direct_unnorm = lightSample.scalar - shadingPos;
+		dist = length(direct_unnorm);
 
 		shadowRayDirection = direct_unnorm / dist;
 
 		srd.targetT = dist;
 		srd.shadowBlocked = true;
+		srd.throughput = vec3(1.0);
 	}else{
-		shadowRayDirection = -lightSample.normal;
+		shadowRayDirection = lightSample.vector;
 
 		srd.targetT = 10000.0;
 		srd.shadowBlocked = true;
+		srd.throughput = vec3(1.0);
 	}
 
 	float NdotL = dot(N, shadowRayDirection);
-	if(NdotL <= 0.0){
+	if(NdotL <= 0.0 && mat.transmissionFactor < 1e-5){
 		return vec3(0.0);
 	}
 
-
-	vec3 shadowRayOrigin = offsetPositionAlongNormal(shadingPos, geoN);
+	vec3 offsetNormal = dot(geoN, shadowRayDirection) > 0.0 ? geoN : -geoN;
+	vec3 shadowRayOrigin = offsetPositionAlongNormal(shadingPos, offsetNormal);
 
 	traceRayEXT(
 		tlas,
-		gl_RayFlagsTerminateOnFirstHitEXT,
+		gl_RayFlagsNoneEXT,
 		0xFF,
 		1,
 		0,
@@ -54,22 +57,46 @@ vec3 evaluateDI(vec3 N, vec3 V, vec3 geoN, vec3 shadingPos, MaterialSample mat, 
 		return vec3(0.0);
 	}
 
-
-	vec3 radiance = lights[lightSample.lightIdx].emission;
+	vec3 radiance;
+	if(lights[lightSample.lightIdx].lightType == LIGHT_TYPE_SKYBOX){
+		ivec2 texSize = textureSize(skyboxTextures[0], 0);
+		vec2 sample_uv = vec2((lightSample.scalar.x + 0.5) / float(texSize.x), (lightSample.scalar.y + 0.5) / float(texSize.y));
+		radiance = texture(skyboxTextures[0], sample_uv).rgb;
+	}else{
+		radiance = lights[lightSample.lightIdx].emission;
+	}
 	vec3 bsdf = evaluateMaterial(N, V, shadowRayDirection, mat);
+
+	// Debug
+
+	/* if(gl_LaunchIDEXT.x==518 && gl_LaunchIDEXT.y == 414){
+		float NdotV = dot(N, V);
+		if(NdotV <= 0.0){
+			debugPrintfEXT("NdotV = %.4f\n bsdf = (%.4f, %.4f, %.4f)\n", 
+				NdotV, bsdf.x, bsdf.y, bsdf.z
+			);
+		}else{
+			debugPrintfEXT("bsdf = (%.4f, %.4f, %.4f)\n", 
+				bsdf.x, bsdf.y, bsdf.z
+			);
+		}
+			
+	}*/
+
+	// Debug
 
 	float MIS_weight = 1.0f;
 
-	float pdf_light = evaluateLightPDF(lightSample.lightIdx, lightSample.pos, shadingPos, lightSample.normal);
+	// Light PDF
+	float pdf_light = evaluateLightPDF(lightSample.lightIdx, shadowRayDirection, dist, lightSample.scalar);
+	// BSDF PDF
 	if(light.ifDelta == 0){
 		float pdf_bsdf = evaluateMaterialPDF(N, V, shadowRayDirection, mat);
-		
 		MIS_weight = powerHeuristicWeight(pdf_light, pdf_bsdf);
 	}
 	
 
-
-	return MIS_weight * radiance * bsdf * NdotL  / pdf_light;	
+	return srd.throughput * MIS_weight * radiance * bsdf * abs(NdotL)  / pdf_light;	
 }
 
 
@@ -85,12 +112,21 @@ vec3 evaluateII(vec3 N, vec3 V, MaterialSample mat, out vec3 weight, out float p
 		return vec3(0.0);
 	}
 
-
 	vec3 bsdf = evaluateMaterial(N, V, L, mat);
 
 	// Ignore MIS weight, as in Indirect Illumination pdf_light=0, MIS weight = 1
-	weight = bsdf * dot(N, L) / pdf_bsdf;
+	weight = bsdf * abs(dot(N, L)) / pdf_bsdf;
 
+	// Debug
+	/* if(gl_LaunchIDEXT.x == 526 && gl_LaunchIDEXT.y == 902){
+		if(length(weight) < 1e-5){
+			debugPrintfEXT("bsdf = (%.6f, %.6f, %.6f), pdf_bsdf = %.6f\n", 
+				bsdf.x, bsdf.y, bsdf.z, pdf_bsdf
+			);
+		}
+	}*/
+	// Debug
+	
 	
 	return L;
 }
@@ -104,6 +140,7 @@ vec3 sampleNEE(vec3 V, HitInfo hitInfo, inout LastIIInfo lastInfo, out vec3 weig
 
 	vec3 currentPos = hitInfo.worldPosition;
 	vec3 currentNormal = hitInfo.worldShadingNormal;
+	vec3 geoNormal = hitInfo.worldGeoNormal;
 
 
 	// Evaluate Emission
@@ -114,9 +151,14 @@ vec3 sampleNEE(vec3 V, HitInfo hitInfo, inout LastIIInfo lastInfo, out vec3 weig
 
 		if(!lastInfo.available) return mat.emission;
 
-		float pdf_light = evaluateLightPDF(geo.lightIdx, currentPos, lastInfo.shadingPoint, currentNormal);
-		float pdf_bsdf = lastInfo.bsdfPdf;
+		vec3 unnorm_dir = currentPos - lastInfo.shadingPoint;
+		float dist = length(unnorm_dir);
+		vec3 dir = unnorm_dir / dist;
+
+		float pdf_bsdf = lastInfo.bsdfPdf;	
+		float pdf_light = evaluateLightPDF(geo.lightIdx, dir, dist, currentNormal);
 		float MIS_weight = powerHeuristicWeight(pdf_bsdf, pdf_light);
+		
 
 		return MIS_weight * mat.emission;
 		
@@ -124,14 +166,24 @@ vec3 sampleNEE(vec3 V, HitInfo hitInfo, inout LastIIInfo lastInfo, out vec3 weig
 
 
 	// Direct Illumination
-	vec3 DI_radiance = evaluateDI(currentNormal, V, hitInfo.worldGeoNormal, currentPos, mat, rngState);
+	vec3 DI_radiance = evaluateDI(currentNormal, V, geoNormal, currentPos, mat, rngState);
 	
 
 	// Indirect Illumination
 	L = evaluateII(currentNormal, V, mat, weight, lastInfo.bsdfPdf, rngState);
 	
+
+	// Debug
+	/*if(gl_LaunchIDEXT.x == 526 && gl_LaunchIDEXT.y == 902){
+		debugPrintfEXT("DI_radiance = (%.6f, %.6f, %.6f)\n  weight = (%.6f, %.6f, %.6f)\n",
+		DI_radiance.x, DI_radiance.y, DI_radiance.z, weight.x, weight.y, weight.z);
+	}*/
+
+	// Debug
+
 	lastInfo.shadingPoint = currentPos;
 	lastInfo.available = true;
+
 
 	if(L == vec3(0.0))
 		ifStop = true;

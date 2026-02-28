@@ -42,4 +42,8 @@ vec2 randomGaussian(inout uint rngState){
 	return r * vec2(cos(theta), sin(theta));
 }
 
+float luminance(vec3 albedo){
+	return albedo.r * 0.2126 + albedo.g * 0.7152 + albedo.b * 0.0722;
+}
+
 #endif // !GLSL_UTIL_H

@@ -84,13 +84,18 @@ public:
 	void update_descriptor_set();
 	
 private:
+	struct DescriptorTextureWrite {
+		pstd::vector<VkDescriptorImageInfo> writesImages;
+	};
 
 	pstd::vector<VkWriteDescriptorSet> writes;
 
 	std::list<VkDescriptorImageInfo> writesImage;
 	std::list<VkDescriptorBufferInfo> writesBuffer;
 	std::list<VkWriteDescriptorSetAccelerationStructureKHR> writesAS;
-	pstd::vector<VkDescriptorImageInfo> writesTexture;
+	std::list<DescriptorTextureWrite> writesTexture;
+
+	
 
 	pstd::vector<DescriptorSet> sets;
 

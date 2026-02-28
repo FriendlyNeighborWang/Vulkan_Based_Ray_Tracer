@@ -148,14 +148,14 @@ void DescriptorSet::descriptor_write(uint32_t binding, VkDescriptorType type, co
 	auto& writesTexture = _manager->writesTexture;
 	auto& writes = _manager->writes;
 
-	writesTexture.clear();
-	writesTexture.reserve(textures.size());
-	for (const auto& texture : textures) {
-		writesTexture.push_back(VkDescriptorImageInfo{});
-		writesTexture.back().imageLayout = texture.image().layout;
-		writesTexture.back().imageView = texture.image();
-		writesTexture.back().sampler = texture.sampler();
+	writesTexture.push_back(DescriptorManager::DescriptorTextureWrite{});
+	writesTexture.back().writesImages.resize(textures.size());
+	for (uint32_t i = 0; i < textures.size(); ++i) {
+		writesTexture.back().writesImages[i].imageLayout = textures[i].image().layout;
+		writesTexture.back().writesImages[i].imageView = textures[i].image();
+		writesTexture.back().writesImages[i].sampler = textures[i].sampler();
 	}
+
 
 	writes.push_back(VkWriteDescriptorSet{});
 	writes.back().sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -163,8 +163,8 @@ void DescriptorSet::descriptor_write(uint32_t binding, VkDescriptorType type, co
 	writes.back().dstBinding = binding;
 	writes.back().dstArrayElement = 0;
 	writes.back().descriptorType = type;
-	writes.back().descriptorCount = static_cast<uint32_t>(writesTexture.size());
-	writes.back().pImageInfo = writesTexture.data();
+	writes.back().descriptorCount = static_cast<uint32_t>(textures.size());
+	writes.back().pImageInfo = writesTexture.back().writesImages.data();
 
 }
 

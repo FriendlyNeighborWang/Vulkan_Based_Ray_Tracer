@@ -12,11 +12,11 @@ float evaluateMaterialPDF(vec3 N, vec3 V, vec3 L, MaterialSample material){
 
 	switch(material.materialType){
 	case MATERIAL_TYPE_COOK_TORRANCE:
-		pdf = evaluateCookTorrancePDF(N, V, L, material.metallic, material.roughness);
+		pdf = evaluateCookTorrancePDF(N, V, L, material.albedo, material.metallic, material.roughness, material.transmissionFactor);
 		break;
 
 	default:
-		pdf = evaluateCookTorrancePDF(N, V, L, material.metallic, material.roughness);
+		pdf = evaluateCookTorrancePDF(N, V, L, material.albedo, material.metallic, material.roughness, material.transmissionFactor);
 		break;
 	}
 
@@ -30,11 +30,11 @@ vec3 sampleMaterial(vec3 N, vec3 V, MaterialSample material,  inout uint rngStat
 	
 	switch(material.materialType){
 	case MATERIAL_TYPE_COOK_TORRANCE:
-		result = sampleCookTorranceBRDF(N, V, material.metallic, material.roughness, rngState);
+		result = sampleCookTorranceBRDF(N, V, material.albedo, material.metallic, material.roughness, material.transmissionFactor, rngState);
 		break;
 
 	default:
-		result = sampleCookTorranceBRDF(N, V, material.metallic, material.roughness, rngState);
+		result = sampleCookTorranceBRDF(N, V, material.albedo, material.metallic, material.roughness, material.transmissionFactor, rngState);
 		break;
 	}
 
@@ -47,11 +47,11 @@ vec3 evaluateMaterial(vec3 N, vec3 V, vec3 L, MaterialSample material){
 
 	switch(material.materialType){
 	case MATERIAL_TYPE_COOK_TORRANCE:
-		result = evaluateCookTorranceBRDF(N, V, L, material.albedo, material.metallic, material.roughness);
+		result = evaluateCookTorranceBRDF(N, V, L, material.albedo, material.metallic, material.roughness, material.transmissionFactor);
 		break;
 
 	default:
-		result = evaluateCookTorranceBRDF(N, V, L, material.albedo, material.metallic, material.roughness);
+		result = evaluateCookTorranceBRDF(N, V, L, material.albedo, material.metallic, material.roughness, material.transmissionFactor);
 		break;
 	}
 

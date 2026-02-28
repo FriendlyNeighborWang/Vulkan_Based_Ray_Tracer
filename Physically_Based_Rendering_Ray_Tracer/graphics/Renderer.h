@@ -1,5 +1,5 @@
-#ifndef PBRT_GRAPHICS_DRAW_FRAME
-#define PBRT_GRAPHICS_DRAW_FRAME
+#ifndef PBRT_GRAPHICS_RENDERER
+#define PBRT_GRAPHICS_RENDERER
 
 #include "base/base.h"
 #include "util/Timer.h"
@@ -28,7 +28,11 @@ private:
 
 	void recreateSwapChain();
 
+	// For RealTime Renderer
 	void updateDynamicSceneInfo(Timer& timer);
+
+	// For Offline Renderer
+	void updateRenderingSetting(Scene::SceneDynamicInfo dynamicInfo);
 
 	// Rendering Info
 	pstd::vector<VkStridedDeviceAddressRegionKHR> groupRegions;
@@ -64,5 +68,5 @@ private:
 
 
 
-#endif // !PBRT_GRAPHICS_DRAW_FRAME
+#endif // !PBRT_GRAPHICS_RENDERER
 

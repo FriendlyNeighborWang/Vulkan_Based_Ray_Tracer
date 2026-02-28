@@ -14,7 +14,7 @@ layout(binding = BINDING_RAY_TRACING_SCENE_STATIC_INFO, set = RAY_TRACING_UNIFOR
 	uint lightCount;
 	float totalLightPower;
 	uint bufferFlags;
-	uint padding;
+	uint ifHasSkyBox;
 } staticInfo;
 
 layout(binding = BINDING_RAY_TRACING_TLAS, set = RAY_TRACING_UNIFORM_SET) uniform accelerationStructureEXT tlas;
@@ -54,9 +54,20 @@ layout(binding = BINDING_RAY_TRACING_TANGENT, set = RAY_TRACING_UNIFORM_SET, sca
 	vec4 tangents[];
 };
 
+layout(binding = BINDING_RAY_TRACING_SKYBOX_TEXTURE_ARRAY, set = RAY_TRACING_SKYBOX_SET) uniform sampler2D skyboxTextures[];
 
+
+#if defined(SHADER_STAGE_ANY_HIT_SHADOW)
+// Shadow ray any-hit: only receives srd
+layout(location = 1) rayPayloadInEXT ShadowRayInfo srd;
+#elif defined(SHADER_STAGE_ANY_HIT_PRIMARY)
+// Primary ray any-hit: only receives pld
+layout(location = 0) rayPayloadInEXT PassableInfo pld;
+#else
+// Closest-hit: receives pld, sends srd
 layout(location = 0) rayPayloadInEXT PassableInfo pld;
 layout(location = 1) rayPayloadEXT ShadowRayInfo srd;
+#endif
 
 bool hasNormals() { return (staticInfo.bufferFlags & BUFFER_FLAG_HAS_NORMALS) != 0; }
 bool hasTangents() { return (staticInfo.bufferFlags & BUFFER_FLAG_HAS_TANGENTS) != 0; }
@@ -115,7 +126,7 @@ HitInfo getObjectHitInfo(){
 
 		vec3 shadingObjNormal = normalize(n0 * barycentrics.x + n1 * barycentrics.y + n2 * barycentrics.z);
 		result.worldShadingNormal = normalize((shadingObjNormal * gl_WorldToObjectEXT).xyz);
-		result.worldShadingNormal = faceforward(result.worldShadingNormal, gl_WorldRayDirectionEXT, result.worldGeoNormal);
+		result.worldShadingNormal = faceforward(result.worldShadingNormal, gl_WorldRayDirectionEXT, result.worldShadingNormal);
 	}else{
 		result.worldShadingNormal = result.worldGeoNormal;
 	}
@@ -149,10 +160,9 @@ HitInfo getObjectHitInfo(){
 		if(mat.normalTexture >= 0){
 			tsNormal = texture(textures[nonuniformEXT(mat.normalTexture)], result.uv).rgb * 2.0 - 1.0;
 			result.worldShadingNormal = normalize(TBN * tsNormal);
-		}
-
-	}	
-
+			result.worldShadingNormal = faceforward(result.worldShadingNormal, gl_WorldRayDirectionEXT, result.worldShadingNormal);
+		}	
+	}
 	return result;
 }
 
@@ -189,14 +199,17 @@ MaterialSample getMaterialSample(uint materialIdx, vec2 uv){
 
 	result.materialType = mat.materialType;
 
-	result.emission = mat.emission;
-	if(mat.emissiveTexture >= 0)
-		result.emission *= texture(textures[nonuniformEXT(mat.emissiveTexture)], uv).rgb;
-
+	// Albedo
 	result.albedo = mat.albedo.rgb;
 	if(mat.albedoTexture >= 0)
 		result.albedo *= texture(textures[nonuniformEXT(mat.albedoTexture)], uv).rgb;
 
+	// Emission
+	result.emission = mat.emission;
+	if(mat.emissiveTexture >= 0)
+		result.emission *= texture(textures[nonuniformEXT(mat.emissiveTexture)], uv).rgb;
+
+	// Matallic & Roughness
 	result.metallic = mat.metallic;
 	result.roughness = mat.roughness;
 
@@ -204,6 +217,13 @@ MaterialSample getMaterialSample(uint materialIdx, vec2 uv){
 		vec4 mr = texture(textures[nonuniformEXT(mat.metallicRoughnessTexture)], uv);
 		result.roughness *= mr.g;
 		result.metallic *= mr.b;
+	}
+
+	// Transmission
+	result.transmissionFactor = mat.transmissionFactor;
+	if(mat.transmissionTexture >= 0){
+		float T = texture(textures[nonuniformEXT(mat.transmissionTexture)], uv).r;
+		result.transmissionFactor *= T;
 	}
 
 	return result;

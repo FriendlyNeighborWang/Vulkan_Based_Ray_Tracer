@@ -115,6 +115,11 @@ void Renderer::updateDynamicSceneInfo(Timer& timer) {
 
 }
 
+void Renderer::updateRenderingSetting(Scene::SceneDynamicInfo dynamicInfo) {
+	Buffer& dynamic_info_buffer = scene.get_dynamic_scene_info(_context);
+	dynamic_info_buffer.write_buffer(&dynamicInfo, sizeof(dynamicInfo));
+}
+
 void Renderer::realtime_render() {
 	// Get Shader Groups Region
 	groupRegions = _context.shaderManager().get_shader_group_regions();
@@ -130,8 +135,13 @@ void Renderer::realtime_render() {
 
 	VkDescriptorSet rtDynamicSet = *(descriptorSets.find("rtDynamicSet")->second);
 	VkDescriptorSet rtUniformSet = *(descriptorSets.find("rtUniformSet")->second);
+	VkDescriptorSet rtSkyBoxSet = *(descriptorSets.find("rtSkyBoxSet")->second);
 	
-	pstd::vector<VkDescriptorSet> render_sets = { rtDynamicSet, imageSets[0]->get(), rtUniformSet };
+	pstd::vector<VkDescriptorSet> render_sets(4);
+	render_sets[RAY_TRACING_DYNAMIC_SET] = rtDynamicSet;
+	render_sets[RAY_TRACING_IMAGE_SET] = imageSets[0]->get();
+	render_sets[RAY_TRACING_UNIFORM_SET] = rtUniformSet;
+	render_sets[RAY_TRACING_SKYBOX_SET] = rtSkyBoxSet;
 	pstd::vector<VkDescriptorSet> tone_mapping_sets = { toneMappingSets[0]->get() };
 
 	PushConstants pushConstants;
@@ -155,29 +165,37 @@ void Renderer::realtime_render() {
 	// Sync Object
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
 		inFlightFences.emplace_back(_context, true);
-		renderFinishedSemaphores.emplace_back(_context);
 		imageAvailableSemaphores.emplace_back(_context);
 	}
 
+	for (uint32_t i = 0; i < swapChain.imageCount(); ++i) {
+		renderFinishedSemaphores.emplace_back(_context);
+	}
+
+	
+	// Set Renderring param
+	auto& renderingSeting = scene.dynamicInfo;
+	renderingSeting.iteration_depth = 4;
+	renderingSeting.samples_per_pixel = 16;
+	updateRenderingSetting(renderingSeting);
 
 	// Render
 	while (!window.should_close()) {
 		window.poll_events();
 
 		inFlightFences[currentFrame].wait();
-		inFlightFences[currentFrame].reset();
+		
 
-		// Resource Setting
+		// Resource Setting & Acquire Next Image
 		CommandBuffer& renderCmdBuffer = renderCmdBuffers[currentFrame];
 		Image& renderTarget = hdrImages[currentFrame];
 		Image& ldrImage = ldrImages[currentFrame];
+		Semaphore& imageAvaiableSemaphore = imageAvailableSemaphores[currentFrame];
 
 		uint32_t imageIndex;
+		VkResult result = swapChain.acquire_next_image(imageAvaiableSemaphore, &imageIndex);
 
-
-		// Acquire swapchain image
-		
-		VkResult result = swapChain.acquire_next_image(imageAvailableSemaphores[currentFrame], &imageIndex);
+		Semaphore& renderFinishedSemaphore = renderFinishedSemaphores[imageIndex];
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			recreateSwapChain();
@@ -185,6 +203,8 @@ void Renderer::realtime_render() {
 		}
 		else if(result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
 			throw std::runtime_error("Renderer::Failed to acquire swap chain image");
+
+		inFlightFences[currentFrame].reset();
 
 
 
@@ -345,13 +365,13 @@ void Renderer::realtime_render() {
 
 		renderCmdBuffer.end_and_submit(
 			_context.gc_queue(),
-			{ imageAvailableSemaphores[currentFrame]},
+			{ imageAvaiableSemaphore},
 			{ VK_PIPELINE_STAGE_TRANSFER_BIT },
-			{ renderFinishedSemaphores[currentFrame]},
+			{ renderFinishedSemaphore},
 			inFlightFences[currentFrame]
 		);
 
-		result = swapChain.present(imageIndex, { renderFinishedSemaphores[currentFrame]});
+		result = swapChain.present(imageIndex, { renderFinishedSemaphore });
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ) {
 			recreateSwapChain();
@@ -378,7 +398,9 @@ void Renderer::offline_render(const std::string& name) {
 	VkDescriptorSet rtDynamicSet = *(descriptorSets.find("rtDynamicSet")->second);
 	VkDescriptorSet rtImageSet = *(descriptorSets.find("rtImageSet0")->second);
 	VkDescriptorSet rtUniformSet = *(descriptorSets.find("rtUniformSet")->second);
-	VkDescriptorSet sets[] = { rtDynamicSet, rtImageSet,  rtUniformSet };
+	VkDescriptorSet rtSkyBoxSet = *(descriptorSets.find("rtSkyBoxSet")->second);
+
+	pstd::vector<VkDescriptorSet> sets = { rtDynamicSet, rtImageSet,  rtUniformSet, rtSkyBoxSet };
 
 	PushConstants pushConstants;
 
@@ -387,6 +409,12 @@ void Renderer::offline_render(const std::string& name) {
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	);
+
+	// Renderering Setting
+	Scene::SceneDynamicInfo renderingSetting = scene.dynamicInfo;
+	renderingSetting.iteration_depth = 16;
+	renderingSetting.samples_per_pixel = 64;
+	updateRenderingSetting(renderingSetting);
 
 
 
@@ -414,12 +442,12 @@ void Renderer::offline_render(const std::string& name) {
 		VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
 		_context.rtPipeline().pipeline_layout(),
 		0,
-		3, sets,
+		static_cast<uint32_t>(sets.size()), sets.data(),
 		0, nullptr
 	);
 
 
-	const uint32_t sample_batch = 128;
+	const uint32_t sample_batch = 1024;
 
 	for (uint32_t current_batch = 0; current_batch < sample_batch; ++current_batch) {
 		pushConstants.sample_batch = current_batch;

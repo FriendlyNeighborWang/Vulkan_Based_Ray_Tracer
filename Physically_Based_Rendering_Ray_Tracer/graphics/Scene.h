@@ -31,10 +31,10 @@ struct TextureData {
 	uint32_t height = 0;
 	uint32_t channels = 0;
 	uint32_t bits = 8;
-	VkDeviceSize size;
+	VkDeviceSize size = 0;
 	const unsigned char* data = nullptr;
 
-	uint32_t samplerIdx;
+	uint32_t samplerIdx=0;
 	VkFormat format;
 };
 
@@ -64,16 +64,18 @@ struct Material {
 	uint32_t materialType;
 	Vector3f emission{ 0.0f };
 	Vector4f albedo{ 1.0f };
-	Float metallic{ 1.0f };
-	Float roughness{ 1.0f };
+	float metallic{ 1.0f };
+	float roughness{ 1.0f };
+	float transmissionFactor{ 0.0f };
 	int emissiveTexture = -1;
 	int albedoTexture = -1;
 	int metallicRoughnessTexture = -1;
 	int normalTexture = -1;
+	int transmissionTexture = -1;
 	uint32_t alphaMode = ALPHA_MODE_OPAQUE;
 	float alphaCutoff = 0.0;
 	uint32_t doublesided = 1;
-	uint32_t _padding[3];
+	uint32_t _padding;
 };
 
 struct Geometry {
@@ -106,13 +108,15 @@ struct MeshInstance {
 };
 
 struct Scene {
+	friend class SceneLoader;
+
 	Scene() = default;
 	Scene(const Scene&) = delete;
 	Scene& operator=(const Scene&) = delete;
 	Scene(Scene&&) = default;
 	Scene& operator=(Scene&&) = default;
 
-	Buffer& get_light_buffer(Context& context);
+	Buffer& get_light_buffer(Context& context, SkyBox& skybox);
 	Buffer& get_material_buffer(Context& context);
 	pstd::vector<Texture>& get_textures(Context& context);
 
@@ -124,8 +128,11 @@ struct Scene {
 	Buffer& get_normal_buffer(Context& context);
 	Buffer& get_tangent_buffer(Context& context);
 
+
 	Buffer& get_dynamic_scene_info(Context& context);
 	Buffer& get_static_scene_info(Context& context);
+
+	
 
 	pstd::vector<Material> materials;
 	pstd::vector<TextureData> textures;
@@ -150,7 +157,8 @@ struct Scene {
 		// Buffer availability bitmask
 		uint32_t bufferFlags = 0;
 
-		uint32_t padding;
+		// SkyBox
+		uint32_t ifHasSkyBox = 0;
 	};
 
 	struct SceneDynamicInfo {
@@ -165,15 +173,18 @@ struct Scene {
 
 		// Ray Tracing Param
 		uint32_t samples_per_pixel = 16;
-		uint32_t iteration_depth = 4;
+		uint32_t iteration_depth = 8;
 		uint32_t padding[2];
 	};
 
 	SceneStaticInfo staticInfo;
 	SceneDynamicInfo dynamicInfo;
 
-private:
 	Buffer& placeholderBuffer(Context& context);
+	static TextureData placeholderTextureData();
+
+private:
+	
 
 
 	Buffer lightBuffer; bool if_lightBuffer_aval = false;
@@ -193,7 +204,8 @@ private:
 	Buffer dynamicSceneInfoBuffer; bool if_dynamicSceneInfoBuffer_aval = false;
 	Buffer staticSceneInfoBuffer; bool if_staticSceneInfoBuffer_aval = false;
 
-	Texture _placeholderTexture;
+
+	inline static TextureData _placeholderTextureData; inline static bool if_placeholderTextureData_aval = false;
 	Buffer _placeholderBuffer; bool if_placeHolderBuffer_aval = false;
 };
 

@@ -12,7 +12,7 @@ float evaluateDirectionalLightPDF(){
 vec3 sampleDirectionalLight(uint lightIdx){
 	Light light = lights[lightIdx];
 
-	return normalize(light.direction);
+	return -normalize(light.direction);
 }
 
 #endif // !GLSL_LIGHT_DIRECTIONAL_H

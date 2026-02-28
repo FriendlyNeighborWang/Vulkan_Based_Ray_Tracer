@@ -24,6 +24,7 @@ struct PassableInfo{
 
 struct ShadowRayInfo{
 	float targetT;
+	vec3 throughput;
 	bool shadowBlocked;
 };
 
@@ -43,14 +44,16 @@ struct Material{
 	vec4 albedo;
 	float metallic;
 	float roughness;
+	float transmissionFactor;
 	int emissiveTexture;
 	int albedoTexture;
 	int metallicRoughnessTexture;
 	int normalTexture;
+	int transmissionTexture;
 	uint alphaMode;
 	float alphaCutoff;
 	uint doublesided;
-	vec3 _padding;
+	uint _padding;
 };
 
 struct MaterialSample{
@@ -59,6 +62,7 @@ struct MaterialSample{
 	vec3 albedo;
 	float metallic;
 	float roughness;
+	float transmissionFactor;
 };
 
 
@@ -84,8 +88,8 @@ struct Light{
 
 struct LightSample{
 	uint lightIdx;
-	vec3 pos;
-	vec3 normal;
+	vec3 scalar;
+	vec3 vector;
 };
 
 

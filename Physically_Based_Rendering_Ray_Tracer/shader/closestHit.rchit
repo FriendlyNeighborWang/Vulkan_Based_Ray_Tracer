@@ -15,6 +15,8 @@ void main(){
 	
 	pld.radiance += pld.throughput * radiance;
 	pld.throughput *= weight;
-	pld.rayOrigin = offsetPositionAlongNormal(hitInfo.worldPosition, hitInfo.worldGeoNormal);
+	pld.rayOrigin = (dot(L, hitInfo.worldGeoNormal) < 0.0) ? 
+		offsetPositionAlongNormal(hitInfo.worldPosition, -hitInfo.worldGeoNormal) : 
+		offsetPositionAlongNormal(hitInfo.worldPosition, hitInfo.worldGeoNormal);
 	pld.rayDirection = L;
 }

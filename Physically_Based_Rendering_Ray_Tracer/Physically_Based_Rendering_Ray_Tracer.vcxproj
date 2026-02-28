@@ -137,6 +137,7 @@
   <ItemGroup>
     <ClInclude Include="base\base.h" />
     <ClInclude Include="base\shader_base.h" />
+    <ClInclude Include="deps\stb\stb_image.h" />
     <ClInclude Include="deps\stb\stb_image_write.h" />
     <ClInclude Include="deps\tiny_gltf\tiny_gltf.h" />
     <ClInclude Include="deps\tlsf\tlsf.h" />
@@ -144,6 +145,7 @@
     <ClInclude Include="graphics\Scene.h" />
     <ClInclude Include="graphics\Renderer.h" />
     <ClInclude Include="graphics\SceneLoader.h" />
+    <ClInclude Include="graphics\SkyBox.h" />
     <ClInclude Include="graphics\Window.h" />
     <ClInclude Include="util\FileOp.h" />
     <ClInclude Include="util\log.h" />
@@ -172,6 +174,8 @@
     <ClCompile Include="deps\tlsf\tlsf.c" />
     <ClCompile Include="graphics\Renderer.cpp" />
     <ClCompile Include="graphics\Scene.cpp" />
+    <ClCompile Include="graphics\SceneLoader.cpp" />
+    <ClCompile Include="graphics\SkyBox.cpp" />
     <ClCompile Include="graphics\Window.cpp" />
     <ClCompile Include="main.cpp" />
     <None Include="resource\Sponza\Sponza.gltf" />
@@ -182,6 +186,7 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
+    <None Include="resource\TransmissionTest\glTF\TransmissionTest.gltf" />
     <None Include="shader\light\light_Directional.glslh" />
     <None Include="shader\light\light_Mesh.glslh">
       <FileType>Document</FileType>
@@ -237,6 +242,7 @@
     <None Include="shader\common\shaderCommon.glslh" />
     <None Include="shader\common\util.glslh" />
     <None Include="shader\light\light_interface.glslh" />
+    <None Include="shader\light\light_SkyBox.glslh" />
     <None Include="shader\material\material_CookTorrance.glslh" />
     <None Include="shader\material\material_interface.glslh" />
     <None Include="shader\sampling\MIS.glslh" />
@@ -249,6 +255,13 @@
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
     </CustomBuild>
     <CustomBuild Include="shader\shadowRayMiss.rmiss">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe -g -Od --target-env vulkan1.3 -o "$(ProjectDir)shader\spv\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+    <CustomBuild Include="shader\shadowRayAnyHit.rahit">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\VulkanSDK\1.4.321.1\Bin\glslangValidator.exe -g -Od --target-env vulkan1.3 -o "$(ProjectDir)shader\spv\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>

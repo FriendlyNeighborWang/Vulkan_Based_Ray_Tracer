@@ -2,9 +2,23 @@
 
 #include "vk_layer/Context.h"
 #include "vk_layer/VkMemoryAllocator.h"
+#include "SkyBox.h"
 
-Buffer& Scene::get_light_buffer(Context& context) {
+Buffer& Scene::get_light_buffer(Context& context, SkyBox& skybox) {
 	if (if_lightBuffer_aval) return lightBuffer;
+
+	// Add Sky Box
+	Light skyboxlight;
+	if (float power = skybox.get_total_power(); power > 0.0f) {
+		skyboxlight.lightType = LIGHT_TYPE_SKYBOX;
+		skyboxlight.power = power;
+		skyboxlight.ifDelta = false;
+
+		staticInfo.lightCount += 1;
+		staticInfo.totalLightPower += power;
+		staticInfo.ifHasSkyBox = 1;
+	}
+	lights.push_back(skyboxlight);
 
 	lightBuffer = context.memAllocator().create_buffer(
 		lights.size() * sizeof(Light),
@@ -42,16 +56,8 @@ Buffer& Scene::get_material_buffer(Context& context) {
 pstd::vector<Texture>& Scene::get_textures(Context& context) {
 	if (if_textures_aval) return textures_list;
 
-	static unsigned char dummyPixel[] = { 255, 255, 255, 255 };
 	if (textures.empty()) {
-		TextureData dummyData;
-		dummyData.width = 1; dummyData.height = 1; dummyData.channels = 4;
-		dummyData.size = 4;
-		dummyData.data = dummyPixel;
-		dummyData.format = VK_FORMAT_R8G8B8A8_UNORM;
-
-		textures.push_back(dummyData);
-
+		textures.push_back(placeholderTextureData());
 		samplers.push_back(SamplerData{});
 	}
 
@@ -209,6 +215,8 @@ Buffer& Scene::get_tangent_buffer(Context& context) {
 
 
 
+
+
 Buffer& Scene::get_dynamic_scene_info(Context& context) {
 	if (if_dynamicSceneInfoBuffer_aval) return dynamicSceneInfoBuffer;
 
@@ -247,6 +255,7 @@ Buffer& Scene::get_static_scene_info(Context& context) {
 }
 
 
+
 Buffer& Scene::placeholderBuffer(Context& context) {
 	if (if_placeHolderBuffer_aval) return _placeholderBuffer;
 
@@ -261,4 +270,20 @@ Buffer& Scene::placeholderBuffer(Context& context) {
 	if_placeHolderBuffer_aval = true;
 
 	return _placeholderBuffer;
+}
+
+TextureData Scene::placeholderTextureData() {
+	if (if_placeholderTextureData_aval) return _placeholderTextureData;
+
+	static unsigned char dummyPixel[] = { 255,255,255,255 };
+	
+	_placeholderTextureData.width = 1; 
+	_placeholderTextureData.height = 1; 
+	_placeholderTextureData.channels = 4;
+	_placeholderTextureData.size = 4;
+	_placeholderTextureData.data = dummyPixel;
+	_placeholderTextureData.format = VK_FORMAT_R8G8B8A8_UNORM;
+
+	if_placeholderTextureData_aval = true;
+	return _placeholderTextureData;
 }
