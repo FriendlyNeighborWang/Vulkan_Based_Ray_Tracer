@@ -217,25 +217,22 @@ Buffer& Scene::get_tangent_buffer(Context& context) {
 
 
 
-Buffer& Scene::get_dynamic_scene_info(Context& context) {
-	if (if_dynamicSceneInfoBuffer_aval) return dynamicSceneInfoBuffer;
-
-	dynamicSceneInfoBuffer = context.memAllocator().create_buffer(
+Buffer Scene::get_dynamic_scene_info(Context& context) {
+	Buffer dynamic_scene_info_buffer;
+	dynamic_scene_info_buffer = context.memAllocator().create_buffer(
 		sizeof(SceneDynamicInfo),
 		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	);
-	
+
 	context.memAllocator().copy_to_buffer(
 		&dynamicInfo,
 		sizeof(dynamicInfo),
-		dynamicSceneInfoBuffer,
+		dynamic_scene_info_buffer,
 		true
 	);
 
-	if_dynamicSceneInfoBuffer_aval = true;
-
-	return dynamicSceneInfoBuffer;
+	return dynamic_scene_info_buffer;
 }
 
 Buffer& Scene::get_static_scene_info(Context& context) {

@@ -134,6 +134,9 @@ int main() {
 	renderer.create_images();
 	const auto& hdrImages = renderer.get_hdrImages();
 	const auto& ldrImages = renderer.get_ldrImages();
+
+	renderer.create_uniform_buffer();
+	const auto& dynamicInfoBuffers = renderer.get_uniform_buffers();
 	
 
 	// Scene Data
@@ -147,8 +150,7 @@ int main() {
 	Buffer& texcoordBuffer = scene.get_texcoord_buffer(context);
 	pstd::vector<Texture>& textures = scene.get_textures(context);
 
-	// Scene Dynamic & Static Info
-	Buffer& dynamicSceneInfoBuffer = scene.get_dynamic_scene_info(context);
+	// Scene Static Info
 	Buffer& staticSceneInfoBuffer = scene.get_static_scene_info(context);
 
 	const pstd::vector<Texture>& skyboxTextures = skybox.get_skybox_textures();
@@ -200,19 +202,18 @@ int main() {
 
 	// Allocate Descriptor Set & Write Descriptor Set
 
-	context.descriptorManager().init_descriptor_pool(3 + 2 * MAX_FRAMES_IN_FLIGHT);
-	DescriptorSet& rtDynamicSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_DYNAMIC_SET_LAYOUT");
+	context.descriptorManager().init_descriptor_pool(2 + 3 * MAX_FRAMES_IN_FLIGHT);
 	DescriptorSet& rtUniformSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_UNIFORM_SET_LAYOUT");
 	DescriptorSet& rtSkyBoxSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_SKYBOX_LAYOUT");
-	pstd::vector<DescriptorSet*> imageSets(MAX_FRAMES_IN_FLIGHT);
+	pstd::vector<DescriptorSet*> rtDynamicSets(MAX_FRAMES_IN_FLIGHT);
+	pstd::vector<DescriptorSet*> rtImageSets(MAX_FRAMES_IN_FLIGHT);
 	pstd::vector<DescriptorSet*> toneMappingSets(MAX_FRAMES_IN_FLIGHT);
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-		imageSets[i] = &context.descriptorManager().allocate_descriptor_set("RAY_TRACING_IMAGE_SET_LAYOUT");
+		rtDynamicSets[i] = &context.descriptorManager().allocate_descriptor_set("RAY_TRACING_DYNAMIC_SET_LAYOUT");
+		rtImageSets[i] = &context.descriptorManager().allocate_descriptor_set("RAY_TRACING_IMAGE_SET_LAYOUT");
 		toneMappingSets[i] = &context.descriptorManager().allocate_descriptor_set("COMPUTE_TONE_MAPPING_SET_LAYOUT");
 	}
 
-
-	rtDynamicSet.descriptor_write(BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, dynamicSceneInfoBuffer);
 
 	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_SCENE_STATIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, staticSceneInfoBuffer);
 	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_TLAS, accelerationStructure);
@@ -231,7 +232,9 @@ int main() {
 	rtSkyBoxSet.descriptor_write(BINDING_RAY_TRACING_SKYBOX_TEXTURE_ARRAY, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, skyboxTextures);
 
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-		imageSets[i]->descriptor_write(BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, hdrImages[i]);
+		rtDynamicSets[i]->descriptor_write(BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, dynamicInfoBuffers[i]);
+
+		rtImageSets[i]->descriptor_write(BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, hdrImages[i]);
 
 		toneMappingSets[i]->descriptor_write(BINDING_COMPUTE_TONE_MAPPING_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, hdrImages[i]);
 		toneMappingSets[i]->descriptor_write(BINDING_COMPUTE_TONE_MAPPING_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, ldrImages[i]);
@@ -253,11 +256,11 @@ int main() {
 
 
 	// Register Resource 
-	renderer.register_descriptor_set("rtDynamicSet", rtDynamicSet);
 	renderer.register_descriptor_set("rtUniformSet", rtUniformSet);
 	renderer.register_descriptor_set("rtSkyBoxSet", rtSkyBoxSet);
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-		renderer.register_descriptor_set("rtImageSet" + std::to_string(i), *imageSets[i]);
+		renderer.register_descriptor_set("rtDynamicSet" + std::to_string(i), *rtDynamicSets[i]);
+		renderer.register_descriptor_set("rtImageSet" + std::to_string(i), *rtImageSets[i]);
 		renderer.register_descriptor_set("computeToneMappingSet" + std::to_string(i), *toneMappingSets[i]);
 	}
 	renderer.register_compute_pipeline("tmPipeline", tmPipeline);

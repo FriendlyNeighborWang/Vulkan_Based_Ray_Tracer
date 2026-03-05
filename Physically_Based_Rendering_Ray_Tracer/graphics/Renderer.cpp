@@ -29,6 +29,16 @@ void Renderer::register_compute_pipeline(std::string name, ComputePipeline& pipe
 	computePipelines.insert({ name, &pipeline });
 }
 
+void Renderer::create_uniform_buffer() {
+	uniformBuffers.clear();
+
+	uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+		uniformBuffers.push_back(scene.get_dynamic_scene_info(_context));
+	}
+}
+
 void Renderer::create_images() {
 	hdrImages.clear();
 	ldrImages.clear();
@@ -109,15 +119,16 @@ void Renderer::updateDynamicSceneInfo(Timer& timer) {
 	cameraController.update(window, timer.get_delta());
 
 	// Write into Uniform Buffer
-	Buffer& dynamic_info_buffer = scene.get_dynamic_scene_info(_context);
+	Buffer& dynamic_info_buffer = uniformBuffers[currentFrame];
 
 	dynamic_info_buffer.write_buffer(&dynamic_info.camera, sizeof(dynamic_info.camera), scene.dynamicInfo.camera_data_offset());
 
 }
 
 void Renderer::updateRenderingSetting(Scene::SceneDynamicInfo dynamicInfo) {
-	Buffer& dynamic_info_buffer = scene.get_dynamic_scene_info(_context);
-	dynamic_info_buffer.write_buffer(&dynamicInfo, sizeof(dynamicInfo));
+	for (auto& dynamic_info_buffer : uniformBuffers) {
+		dynamic_info_buffer.write_buffer(&dynamicInfo, sizeof(dynamicInfo));
+	}
 }
 
 void Renderer::realtime_render() {
@@ -129,16 +140,16 @@ void Renderer::realtime_render() {
 	toneMappingSets.reserve(MAX_FRAMES_IN_FLIGHT);
 
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+		dynamicSets.push_back(descriptorSets.find("rtDynamicSet" + std::to_string(i))->second);
 		imageSets.push_back(descriptorSets.find("rtImageSet" + std::to_string(i))->second);
 		toneMappingSets.push_back(descriptorSets.find("computeToneMappingSet" + std::to_string(i))->second);
 	}
 
-	VkDescriptorSet rtDynamicSet = *(descriptorSets.find("rtDynamicSet")->second);
 	VkDescriptorSet rtUniformSet = *(descriptorSets.find("rtUniformSet")->second);
 	VkDescriptorSet rtSkyBoxSet = *(descriptorSets.find("rtSkyBoxSet")->second);
 	
 	pstd::vector<VkDescriptorSet> render_sets(4);
-	render_sets[RAY_TRACING_DYNAMIC_SET] = rtDynamicSet;
+	render_sets[RAY_TRACING_DYNAMIC_SET] = dynamicSets[0]->get();
 	render_sets[RAY_TRACING_IMAGE_SET] = imageSets[0]->get();
 	render_sets[RAY_TRACING_UNIFORM_SET] = rtUniformSet;
 	render_sets[RAY_TRACING_SKYBOX_SET] = rtSkyBoxSet;
@@ -176,7 +187,7 @@ void Renderer::realtime_render() {
 	// Set Renderring param
 	auto& renderingSeting = scene.dynamicInfo;
 	renderingSeting.iteration_depth = 4;
-	renderingSeting.samples_per_pixel = 16;
+	renderingSeting.samples_per_pixel = 8;
 	updateRenderingSetting(renderingSeting);
 
 	// Render
@@ -220,6 +231,7 @@ void Renderer::realtime_render() {
 		vkCmdBindPipeline(renderCmdBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _context.rtPipeline());
 
 		updateDynamicSceneInfo(deltaTimer);
+		render_sets[RAY_TRACING_DYNAMIC_SET] = dynamicSets[currentFrame]->get();
 		render_sets[RAY_TRACING_IMAGE_SET] = imageSets[currentFrame]->get();
 
 		vkCmdBindDescriptorSets(
@@ -395,7 +407,7 @@ void Renderer::offline_render(const std::string& name) {
 	// Resources
 	Image& renderTarget = hdrImages[0];
 
-	VkDescriptorSet rtDynamicSet = *(descriptorSets.find("rtDynamicSet")->second);
+	VkDescriptorSet rtDynamicSet = *(descriptorSets.find("rtDynamicSet0")->second);
 	VkDescriptorSet rtImageSet = *(descriptorSets.find("rtImageSet0")->second);
 	VkDescriptorSet rtUniformSet = *(descriptorSets.find("rtUniformSet")->second);
 	VkDescriptorSet rtSkyBoxSet = *(descriptorSets.find("rtSkyBoxSet")->second);

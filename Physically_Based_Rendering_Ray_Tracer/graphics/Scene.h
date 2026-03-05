@@ -129,7 +129,7 @@ struct Scene {
 	Buffer& get_tangent_buffer(Context& context);
 
 
-	Buffer& get_dynamic_scene_info(Context& context);
+	Buffer get_dynamic_scene_info(Context& context);
 	Buffer& get_static_scene_info(Context& context);
 
 	
@@ -201,7 +201,6 @@ private:
 	Buffer tangentBuffer; bool if_tangentBuffer_aval = false;
 	
 
-	Buffer dynamicSceneInfoBuffer; bool if_dynamicSceneInfoBuffer_aval = false;
 	Buffer staticSceneInfoBuffer; bool if_staticSceneInfoBuffer_aval = false;
 
 

@@ -13,6 +13,9 @@ class Renderer {
 public:
 	Renderer(Context& context, Window& window, SwapChain& swapChain, Scene& scene);
 
+	void create_uniform_buffer();
+	const pstd::vector<Buffer>& get_uniform_buffers() const { return uniformBuffers; }
+
 	void create_images();
 	const pstd::vector<Image>& get_ldrImages() const { return ldrImages; }
 	const pstd::vector<Image>& get_hdrImages() const { return hdrImages; }
@@ -48,6 +51,8 @@ private:
 	pstd::vector<CommandBuffer> renderCmdBuffers;
 	pstd::vector<Image> hdrImages;
 	pstd::vector<Image> ldrImages;
+	pstd::vector<Buffer> uniformBuffers;
+	pstd::vector<DescriptorSet*> dynamicSets;
 	pstd::vector<DescriptorSet*> imageSets;
 	pstd::vector<DescriptorSet*> toneMappingSets;
 	std::unordered_map<std::string, DescriptorSet*> descriptorSets;
