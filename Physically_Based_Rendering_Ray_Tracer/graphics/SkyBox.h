@@ -7,12 +7,12 @@
 
 class SkyBox {
 public:
-	SkyBox(Context& context);
+	SkyBox();
 
-	SkyBox(Context& context, const std::string& filePath);
+	SkyBox(const std::string& filePath);
 
 	const float get_total_power() const { return totalPower; }
-	const pstd::vector<Texture>& get_skybox_textures() const { return textures; }
+	pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*> get_skybox_textures_and_samplers(Context& context);
 
 private:
 
@@ -25,11 +25,14 @@ private:
 	pstd::vector<float> marginalCdf;
 	float totalPower = 0.0f;
 
+	uint32_t _width, _height, _channels;
+
 	// envTexture, conditionalCdfTexture, marginalCdfTexture; 
 	pstd::vector<Texture> textures;
 	// hdrSampler, cdfSampler
 	pstd::vector<Sampler> samplers;
 
+	bool if_use = false;
 };
 
 #endif // !PBRT_GRAPHICS_SKYBOX

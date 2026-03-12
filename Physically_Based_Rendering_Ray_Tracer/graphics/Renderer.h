@@ -1,5 +1,5 @@
-#ifndef PBRT_GRAPHICS_RENDERER
-#define PBRT_GRAPHICS_RENDERER
+#ifndef PBRT_GRAPHICS_RENDERER_H
+#define PBRT_GRAPHICS_RENDERER_H
 
 #include "base/base.h"
 #include "util/Timer.h"
@@ -12,17 +12,11 @@
 class Renderer {
 public:
 	Renderer(Context& context, Window& window, SwapChain& swapChain, Scene& scene);
+	~Renderer();
 
-	void create_uniform_buffer();
-	const pstd::vector<Buffer>& get_uniform_buffers() const { return uniformBuffers; }
+	// void create_images();
 
-	void create_images();
-	const pstd::vector<Image>& get_ldrImages() const { return ldrImages; }
-	const pstd::vector<Image>& get_hdrImages() const { return hdrImages; }
-
-	void register_descriptor_set(std::string name, DescriptorSet& descriptorSet);
-
-	void register_compute_pipeline(std::string name, ComputePipeline& pipeline);
+	void prepare_frame_context();
 
 	void realtime_render();
 	void offline_render(const std::string& name);
@@ -32,13 +26,12 @@ private:
 	void recreateSwapChain();
 
 	// For RealTime Renderer
-	void updateDynamicSceneInfo(Timer& timer);
+	void updateDynamicSceneInfo(Timer& timer, FrameContext& fc);
 
 	// For Offline Renderer
 	void updateRenderingSetting(Scene::SceneDynamicInfo dynamicInfo);
 
 	// Rendering Info
-	pstd::vector<VkStridedDeviceAddressRegionKHR> groupRegions;
 	PFN_vkCmdTraceRaysKHR vkCmdTraceRaysKHR;
 
 	// Sync Object
@@ -48,15 +41,7 @@ private:
 
 
 	// Resource
-	pstd::vector<CommandBuffer> renderCmdBuffers;
-	pstd::vector<Image> hdrImages;
-	pstd::vector<Image> ldrImages;
-	pstd::vector<Buffer> uniformBuffers;
-	pstd::vector<DescriptorSet*> dynamicSets;
-	pstd::vector<DescriptorSet*> imageSets;
-	pstd::vector<DescriptorSet*> toneMappingSets;
-	std::unordered_map<std::string, DescriptorSet*> descriptorSets;
-	std::unordered_map<std::string, ComputePipeline*> computePipelines;
+	pstd::vector<FrameContext> frames;
 
 	// Reference
 	Window& window;
@@ -73,5 +58,5 @@ private:
 
 
 
-#endif // !PBRT_GRAPHICS_RENDERER
+#endif // !PBRT_GRAPHICS_RENDERER_H
 

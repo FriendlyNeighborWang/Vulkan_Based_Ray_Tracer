@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-Image::Image(Image&& other) noexcept: _device(other._device), _memory(other._memory), _image(other._image), _imageView(other._imageView), extent(other.extent), tiling(other.tiling), layout(other.layout), format(other.format), size(other.size), map_address(other.map_address) {
+Image::Image(Image&& other) noexcept: _device(other._device), _memory(other._memory), _image(other._image), _imageView(other._imageView), extent(other.extent), tiling(other.tiling), layout(other.layout), format(other.format), size(other.size), usage(other.usage), memoryProperties(other.memoryProperties), currentAccessFlags(other.currentAccessFlags), currentPipelineStage(other.currentPipelineStage), map_address(other.map_address) {
 	other._device = VK_NULL_HANDLE;
 	other._memory = VK_NULL_HANDLE;
 	other._image = VK_NULL_HANDLE;
@@ -29,6 +29,10 @@ Image& Image::operator=(Image&& other) noexcept {
 		layout = other.layout;
 		format = other.format;
 		size = other.size;
+		usage = other.usage;
+		memoryProperties = other.memoryProperties;
+		currentAccessFlags = other.currentAccessFlags;
+		currentPipelineStage = other.currentPipelineStage;
 		map_address = other.map_address;
 
 		other._device = VK_NULL_HANDLE;
@@ -59,7 +63,7 @@ VkImageView Image::create_imageview(VkDevice device, VkImage image, VkFormat for
 	return imageView;
 }
 
-void Image::transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout, VkAccessFlags srcAccess, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) {
+void Image::transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout, VkAccessFlags nextAccess, VkPipelineStageFlags nextStage) {
 
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -73,8 +77,8 @@ void Image::transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImag
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 1;
 
-	barrier.srcAccessMask = srcAccess;
-	barrier.dstAccessMask = dstAccess;
+	barrier.srcAccessMask = currentAccessFlags;
+	barrier.dstAccessMask = nextAccess;
 
 	if (targetLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -88,7 +92,47 @@ void Image::transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImag
 
 	vkCmdPipelineBarrier(
 		cmdBuffer,
-		srcStage, dstStage,
+		currentPipelineStage, nextStage,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &barrier
+	);
+
+	layout = targetLayout;
+	currentAccessFlags = nextAccess;
+	currentPipelineStage = nextStage;
+}
+
+void Image::transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout) {
+	VkImageMemoryBarrier barrier{};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.image = _image;
+	barrier.oldLayout = layout;
+	barrier.newLayout = targetLayout;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = 0;
+
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	if (targetLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+		if (hasStencilComponent(format))
+			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+	}
+	else {
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	}
+
+	vkCmdPipelineBarrier(
+		cmdBuffer,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
 		0,
 		0, nullptr,
 		0, nullptr,
@@ -115,7 +159,7 @@ bool Image::hasStencilComponent(VkFormat format){
 		format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-Image::Image(VkDevice device, VkDeviceMemory memory, VkImage image, VkImageView imageView, VkExtent2D extent, VkImageTiling tiling, VkImageLayout layout, VkFormat format, VkDeviceSize size) :_device(device), _memory(memory), _image(image), _imageView(imageView), extent(extent), tiling(tiling), layout(layout),format(format), size(size){}
+Image::Image(VkDevice device, VkDeviceMemory memory, VkImage image, VkImageView imageView, VkExtent2D extent, VkImageTiling tiling, VkImageLayout layout, VkFormat format, VkDeviceSize size, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryProperties) :_device(device), _memory(memory), _image(image), _imageView(imageView), extent(extent), tiling(tiling), layout(layout),format(format), size(size), usage(usage), memoryProperties(memoryProperties){}
 
 Image::~Image() {
 	if (map_address)unmap_memory();

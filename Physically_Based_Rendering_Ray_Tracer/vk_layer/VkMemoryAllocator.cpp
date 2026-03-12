@@ -49,7 +49,7 @@ Image VkMemoryAllocator::create_image(VkExtent2D extent, VkFormat format, VkImag
 	if (tiling != VK_IMAGE_TILING_LINEAR)
 		imgView = Image::create_imageview(_context, img, format, aspect);
 
-	Image image(_context, memory, img, imgView, extent, tiling, VK_IMAGE_LAYOUT_UNDEFINED, format, memReq.size);
+	Image image(_context, memory, img, imgView, extent, tiling, VK_IMAGE_LAYOUT_UNDEFINED, format, memReq.size, usage, properties);
 	
 
 	return image;
@@ -74,7 +74,7 @@ Buffer VkMemoryAllocator::create_buffer(VkDeviceSize size, VkBufferUsageFlags us
 	if (vkBindBufferMemory(_context, buf, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("VkMemoryAllocator::Failed to bind memory to Buffer");
 
-	Buffer buffer(_context, memory, buf, size);
+	Buffer buffer(_context, memory, buf, size, usage, properties);
 
 	return buffer;
 }
@@ -244,8 +244,7 @@ pstd::vector<Texture> VkMemoryAllocator::create_textures(const pstd::vector<Text
 		image.transition_layout(
 			_context, cmdBuffer,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			0, VK_ACCESS_TRANSFER_WRITE_BIT,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_ACCESS_TRANSFER_WRITE_BIT,
 			VK_PIPELINE_STAGE_TRANSFER_BIT
 		);
 
@@ -256,9 +255,7 @@ pstd::vector<Texture> VkMemoryAllocator::create_textures(const pstd::vector<Text
 		image.transition_layout(
 			_context, cmdBuffer,
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VK_ACCESS_TRANSFER_WRITE_BIT, 
 			VK_ACCESS_SHADER_READ_BIT,
-			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR
 		);
 

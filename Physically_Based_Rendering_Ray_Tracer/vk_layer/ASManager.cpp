@@ -5,31 +5,31 @@
 #include "CommandPool.h"
 #include "VkMemoryAllocator.h"
 
-BLAS::BLAS(BLAS&& other) noexcept:pasm(other.pasm),asBuffer(std::move(other.asBuffer)), as(other.as){
+BLAS::BLAS(BLAS&& other) noexcept:_device(other._device),asBuffer(std::move(other.asBuffer)), as(other.as){
 	other.as = VK_NULL_HANDLE;
-	other.pasm = nullptr;
+	other._device = VK_NULL_HANDLE;
 }
 
 BLAS& BLAS::operator=(BLAS&& other) noexcept {
 if (this != &other) {
-	if (as != VK_NULL_HANDLE)pasm->vkDestroyAccelerationStructureKHR(pasm->_context, as, nullptr);
+	if (as != VK_NULL_HANDLE)ASManager::vkDestroyAccelerationStructureKHR(_device, as, nullptr);
 }
 
 	as = other.as;
 	asBuffer = std::move(other.asBuffer);
-	pasm = other.pasm;
+	_device = other._device;
 	
 	other.as = VK_NULL_HANDLE;
-	other.pasm = nullptr;
+	other._device = VK_NULL_HANDLE;
 
 	return *this;
 }
 
 BLAS::~BLAS() {
-	if (as != VK_NULL_HANDLE)pasm->vkDestroyAccelerationStructureKHR(pasm->_context, as, nullptr);
+	if (as != VK_NULL_HANDLE)ASManager::vkDestroyAccelerationStructureKHR(_device, as, nullptr);
 }
 
-BLAS::BLAS(ASManager* address, Mesh& mesh, const Buffer& vertexBuffer, const Buffer& indexBuffer):pasm(address) {
+BLAS::BLAS(Context& context, Mesh& mesh, const Buffer& vertexBuffer, const Buffer& indexBuffer):_device(context) {
 	VkDeviceAddress vertexBufferAddress = vertexBuffer.device_address();
 	VkDeviceAddress indexBufferAddress = indexBuffer.device_address();
 
@@ -84,8 +84,8 @@ BLAS::BLAS(ASManager* address, Mesh& mesh, const Buffer& vertexBuffer, const Buf
 
 	VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
 	sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-	pasm->vkGetAccelerationStructureBuildSizesKHR(
-		pasm->_context,
+	ASManager::vkGetAccelerationStructureBuildSizesKHR(
+		_device,
 		VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
 		&buildInfo,
 		primitiveCounts.data(),
@@ -93,7 +93,7 @@ BLAS::BLAS(ASManager* address, Mesh& mesh, const Buffer& vertexBuffer, const Buf
 	);
 	
 	// Acceleration Buffer
-	asBuffer = pasm->_context.memAllocator().create_buffer(
+	asBuffer = context.memAllocator().create_buffer(
 		sizeInfo.accelerationStructureSize,
 		VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
@@ -107,11 +107,11 @@ BLAS::BLAS(ASManager* address, Mesh& mesh, const Buffer& vertexBuffer, const Buf
 	createInfo.size = sizeInfo.accelerationStructureSize;
 	createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
-	if (pasm->vkCreateAccelerationStructureKHR(pasm->_context, &createInfo, nullptr, &as) != VK_SUCCESS)
+	if (ASManager::vkCreateAccelerationStructureKHR(_device, &createInfo, nullptr, &as) != VK_SUCCESS)
 		throw std::runtime_error("ASManager::Failed to create BLAS");
 
 	// Create Scratch Buffer
-	Buffer scratchBuffer = pasm->_context.memAllocator().create_buffer(
+	Buffer scratchBuffer = context.memAllocator().create_buffer(
 		sizeInfo.buildScratchSize,
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
@@ -126,61 +126,59 @@ BLAS::BLAS(ASManager* address, Mesh& mesh, const Buffer& vertexBuffer, const Buf
 	// Command
 	const VkAccelerationStructureBuildRangeInfoKHR* pRangeInfo = rangeInfos.data();
 	
-	CommandBuffer cmdBuffer = pasm->_context.cmdPool().get_command_buffer();
+	CommandBuffer cmdBuffer = context.cmdPool().get_command_buffer();
 	cmdBuffer.begin(true);
 
-	pasm->vkCmdBuildAccelerationStructuresKHR(cmdBuffer, 1, &buildInfo, &pRangeInfo);
+	ASManager::vkCmdBuildAccelerationStructuresKHR(cmdBuffer, 1, &buildInfo, &pRangeInfo);
 
-	cmdBuffer.end_and_submit(pasm->_context.gc_queue(), true);
+	cmdBuffer.end_and_submit(context.gc_queue(), true);
 }
 
 VkDeviceAddress BLAS::device_address() const {
 	VkAccelerationStructureDeviceAddressInfoKHR addressInfo{};
 	addressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
 	addressInfo.accelerationStructure = as;
-	return pasm->vkGetAccelerationStructureDeviceAddressKHR(pasm->_context, &addressInfo);
+	return ASManager::vkGetAccelerationStructureDeviceAddressKHR(_device, &addressInfo);
 }
 
-TLAS::TLAS(TLAS&& other) noexcept : pasm(other.pasm), asBuffer(std::move(other.asBuffer)), blas(std::move(other.blas)), as(other.as) {
+TLAS::TLAS(TLAS&& other) noexcept : _device(other._device), asBuffer(std::move(other.asBuffer)), blas(std::move(other.blas)), as(other.as) {
 	other.as = VK_NULL_HANDLE;
-	other.pasm = nullptr;
+	other._device = VK_NULL_HANDLE;
 }
 
 TLAS& TLAS::operator=(TLAS&& other) noexcept {
-if (this != &other) {
-if (as != VK_NULL_HANDLE)pasm->vkDestroyAccelerationStructureKHR(pasm->_context, as, nullptr);
-}
+	if (this != &other) {
+		if (as != VK_NULL_HANDLE)ASManager::vkDestroyAccelerationStructureKHR(_device, as, nullptr);
+	}
 
 	as = other.as;
 	blas = std::move(other.blas);
 	asBuffer = std::move(other.asBuffer);
-	pasm = other.pasm;
+	_device = other._device;
 
 	other.as = VK_NULL_HANDLE;
 	other.blas.clear();
-	other.pasm = nullptr;
+	other._device = VK_NULL_HANDLE;
 
 	return *this;
 }
 
 TLAS::~TLAS() {
-	if (as != VK_NULL_HANDLE)pasm->vkDestroyAccelerationStructureKHR(pasm->_context, as, nullptr);
+	if (as != VK_NULL_HANDLE)ASManager::vkDestroyAccelerationStructureKHR(_device, as, nullptr);
 }
 
-TLAS::TLAS(ASManager* address, Scene& scene):pasm(address) {
+TLAS::TLAS(Context& context, Scene& scene):_device(context) {
 
 	pstd::vector<VkAccelerationStructureInstanceKHR> vkInstances;
-
-	
 
 	// Build BLAS
 	blas.resize(scene.meshes.size());
 	for (uint32_t i = 0; i < scene.meshes.size(); ++i) {
 		blas[i] = BLAS(
-			address,
+			context,
 			scene.meshes[i],
-			scene.get_vertex_buffer(pasm->_context),
-			scene.get_index_buffer(pasm->_context)
+			scene.get_vertex_buffer(context),
+			scene.get_index_buffer(context)
 		);
 	}
 
@@ -206,7 +204,7 @@ TLAS::TLAS(ASManager* address, Scene& scene):pasm(address) {
 
 	VkDeviceSize instanceBufferSize = sizeof(VkAccelerationStructureInstanceKHR) * vkInstances.size();
 
-	Buffer instanceBuffer = pasm->_context.memAllocator().create_buffer(
+	Buffer instanceBuffer = context.memAllocator().create_buffer(
 		instanceBufferSize,
 		VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
@@ -214,7 +212,7 @@ TLAS::TLAS(ASManager* address, Scene& scene):pasm(address) {
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 	);
 
-	pasm->_context.memAllocator().copy_to_buffer_directly(vkInstances.data(), instanceBuffer);
+	context.memAllocator().copy_to_buffer_directly(vkInstances.data(), instanceBuffer);
 
 	// Geometry Setting
 	VkAccelerationStructureGeometryInstancesDataKHR instancesData{};
@@ -239,15 +237,15 @@ TLAS::TLAS(ASManager* address, Scene& scene):pasm(address) {
 	uint32_t instanceCount = static_cast<uint32_t>(vkInstances.size());
 	VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
 	sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-	pasm->vkGetAccelerationStructureBuildSizesKHR(
-		pasm->_context,
+	ASManager::vkGetAccelerationStructureBuildSizesKHR(
+		_device,
 		VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
 		&buildInfo,
 		&instanceCount,
 		&sizeInfo
 	);
 
-	asBuffer = pasm->_context.memAllocator().create_buffer(
+	asBuffer = context.memAllocator().create_buffer(
 		sizeInfo.accelerationStructureSize,
 		VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
@@ -262,11 +260,11 @@ TLAS::TLAS(ASManager* address, Scene& scene):pasm(address) {
 	createInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
 
 
-	if (pasm->vkCreateAccelerationStructureKHR(pasm->_context, &createInfo, nullptr, &as) != VK_SUCCESS)
+	if (ASManager::vkCreateAccelerationStructureKHR(_device, &createInfo, nullptr, &as) != VK_SUCCESS)
 		throw std::runtime_error("ASManager::Failed to create TLAS");
 
 	// Create Scratch Buffer
-	Buffer scratchBuffer = pasm->_context.memAllocator().create_buffer(
+	Buffer scratchBuffer = context.memAllocator().create_buffer(
 		sizeInfo.buildScratchSize,
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
@@ -286,16 +284,16 @@ TLAS::TLAS(ASManager* address, Scene& scene):pasm(address) {
 
 	const auto* pRangeInfo = &rangeInfo;
 
-	CommandBuffer cmdBuffer = pasm->_context.cmdPool().get_command_buffer();
+	CommandBuffer cmdBuffer =context.cmdPool().get_command_buffer();
 	cmdBuffer.begin(true);
 
-	pasm->vkCmdBuildAccelerationStructuresKHR(
+	ASManager::vkCmdBuildAccelerationStructuresKHR(
 		cmdBuffer,
 		1, &buildInfo,
 		&pRangeInfo
 	);
 
-	cmdBuffer.end_and_submit(pasm->_context.gc_queue(), true);
+	cmdBuffer.end_and_submit(context.gc_queue(), true);
 }
 
 
@@ -327,5 +325,5 @@ void ASManager::load_function() {
 }
 
 TLAS ASManager::get_tlas(Scene& scene) {
-	return TLAS(this, scene);
+	return TLAS(_context, scene);
 }

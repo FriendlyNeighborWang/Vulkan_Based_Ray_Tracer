@@ -49,12 +49,12 @@ public:
 	operator const VkPhysicalDevice& () const;
 	operator const VkDevice& () const;
 	
-	ShaderManager& shaderManager();
 	VkMemoryAllocator& memAllocator();
 	CommandPool& cmdPool();
 	DescriptorManager& descriptorManager();
 	ASManager& asManager();
-	RTPipeline& rtPipeline();
+	PipelineManager& pipelineManager();
+	ResourceManager& resourceManager();
 
 	Queue& gc_queue();
 	Queue& present_queue();
@@ -94,12 +94,12 @@ private:
 	inline static pstd::vector<const char*> validation_layers;
 
 	// Other components
-	std::unique_ptr<ShaderManager> _shaderManager;
 	std::unique_ptr<VkMemoryAllocator> _memAllocator;
 	std::unique_ptr<CommandPool> _cmdPool;
 	std::unique_ptr<DescriptorManager> _descriptorManager;
 	std::unique_ptr<ASManager> _asManager;
-	std::unique_ptr<RTPipeline> _rtPipeline;
+	std::unique_ptr<PipelineManager> _pipelineManager;
+	std::unique_ptr<ResourceManager> _resourceManager;
 
 
 	// Instance members

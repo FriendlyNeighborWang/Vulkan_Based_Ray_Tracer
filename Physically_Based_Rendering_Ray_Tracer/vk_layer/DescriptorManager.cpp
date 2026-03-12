@@ -5,9 +5,9 @@
 #include "Image.h"
 #include "Buffer.h"
 
-DescriptorSetLayout::DescriptorSetLayout(VkDevice device) :_device(device){}
+DescriptorSetLayout::DescriptorSetLayout(VkDevice device, uint32_t allocate_set_num) :_device(device), _allocate_set_num(allocate_set_num){}
 
-DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& other) noexcept :_bindings(std::move(other._bindings)), type_num(std::move(other.type_num)), _layout(other._layout), _device(other._device) {
+DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& other) noexcept :_bindings(std::move(other._bindings)), type_num(std::move(other.type_num)), _layout(other._layout), _device(other._device), _allocate_set_num(other._allocate_set_num) {
 	other._bindings.clear();
 	other.type_num.clear();
 	other._layout = VK_NULL_HANDLE;
@@ -23,6 +23,7 @@ DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout && other
 	type_num = std::move(other.type_num);
 	_layout = other._layout;
 	_device = other._device;
+	_allocate_set_num = other._allocate_set_num;
 
 
 	other._bindings.clear();
@@ -46,7 +47,7 @@ void DescriptorSetLayout::add_binding(uint32_t binding, VkDescriptorType type, V
 	layoutBinding.stageFlags = stage;
 	layoutBinding.pImmutableSamplers = ImmutableSamplers;
 
-	type_num[type] += count;
+	type_num[type] += count * _allocate_set_num;
 
 	_bindings.push_back(layoutBinding);
 }
@@ -181,17 +182,19 @@ DescriptorManager::~DescriptorManager() {
 	LOG_STREAM("DescriptorManager") << "DescriptorManager has been deconstructed" << std::endl;
 }
 
-DescriptorSetLayout& DescriptorManager::create_null_descriptor_set_layout(const std::string& name) {
-	layouts.insert({ name, DescriptorSetLayout(_context) });
+DescriptorSetLayout& DescriptorManager::create_null_descriptor_set_layout(const std::string& name, uint32_t allocate_set_num) {
+	layouts.insert({ name, DescriptorSetLayout(_context, allocate_set_num) });
 	
 	return layouts.find(name)->second;
 }
 
-void DescriptorManager::init_descriptor_pool(uint32_t max_sets_num) {
+void DescriptorManager::init_descriptor_pool() {
+	uint32_t maxSets = 0;
 	for (const auto& layout : layouts) {
 		for (const auto& ele : layout.second.type_num) {
 			total_type_num[ele.first] += ele.second;
 		}
+		maxSets += layout.second._allocate_set_num;
 	}
 
 	pstd::vector<VkDescriptorPoolSize> poolSizes;
@@ -203,7 +206,6 @@ void DescriptorManager::init_descriptor_pool(uint32_t max_sets_num) {
 		poolSizes.push_back(poolSize);
 	}
 
-	uint32_t maxSets = static_cast<uint32_t>(((max_sets_num == 0) ? layouts.size() : max_sets_num));
 	sets.reserve(maxSets);
 
 	VkDescriptorPoolCreateInfo poolInfo{};
@@ -233,15 +235,6 @@ DescriptorSet& DescriptorManager::allocate_descriptor_set(const std::string& lay
 
 	sets.push_back(DescriptorSet(_context, set, this));
 	return sets.back();
-}
-
-pstd::vector<VkDescriptorSetLayout> DescriptorManager::get_descriptor_set_layouts(const pstd::vector<std::string>& layout_names) {
-	pstd::vector<VkDescriptorSetLayout> vkLayouts(layout_names.size());
-	
-	for (uint32_t i = 0; i < layout_names.size(); ++i) {
-		vkLayouts[i] = layouts.find(layout_names[i])->second;
-	}
-	return vkLayouts;
 }
 
 

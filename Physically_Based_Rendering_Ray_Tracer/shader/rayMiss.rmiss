@@ -7,14 +7,14 @@
 #include "./common/shaderCommon.glslh"
 #include "./sampling/MIS.glslh"
 
-layout(binding = BINDING_RAY_TRACING_SCENE_STATIC_INFO, set = RAY_TRACING_UNIFORM_SET) uniform SceneStaticInfo{
+layout(binding = BINDING_PIPELINE_RAY_TRACING_STATIC_SCENE_STATIC_INFO, set = PIPELINE_RAY_TRACING_STATIC_SET) uniform SceneStaticInfo{
 	uint lightCount;
 	float totalLightPower;
 	uint bufferFlags;
 	uint ifHasSkyBox;
 } staticInfo;
 
-layout(binding = BINDING_RAY_TRACING_SKYBOX_TEXTURE_ARRAY, set = RAY_TRACING_SKYBOX_SET) uniform sampler2D skyboxTextures[];
+layout(binding = BINDING_PIPELINE_RAY_TRACING_STATIC_SKYBOX_TEXTURE_ARRAY, set = PIPELINE_RAY_TRACING_STATIC_SET) uniform sampler2D skyboxTextures[];
 
 layout(location = 0) rayPayloadInEXT PassableInfo pld;
 

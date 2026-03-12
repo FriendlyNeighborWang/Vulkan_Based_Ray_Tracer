@@ -6,14 +6,10 @@
 
 #include "stb_image.h"
 
-SkyBox::SkyBox(Context& context){
-	samplers.emplace_back(context, SamplerData{});
-	pstd::vector<TextureData> skyboxTextureData{ Scene::placeholderTextureData() };
-	textures = context.memAllocator().create_textures(skyboxTextureData, samplers);
-}
+SkyBox::SkyBox(): if_use(false){}
 
 
-SkyBox::SkyBox(Context& context, const std::string& filePath) {
+SkyBox::SkyBox(const std::string& filePath): if_use(true) {
 	const float PI = 3.1415926535f;
 
 	// Load Data
@@ -24,6 +20,7 @@ SkyBox::SkyBox(Context& context, const std::string& filePath) {
 		throw std::runtime_error("SkyBox::Failed to load SkyBox src image");
 	}
 
+	_width = w; _height = h; _channels = channels;
 
 	hdrData.resize(w * h * 4);
 
@@ -107,11 +104,20 @@ SkyBox::SkyBox(Context& context, const std::string& filePath) {
 	marginalCdf[h - 1] = 1.0f;
 
 
+}
+
+pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*> SkyBox::get_skybox_textures_and_samplers(Context& context) {
+	using ReturnType = pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*>;
+	if (!textures.empty()) return ReturnType(&textures, &samplers);
+
+	if (!if_use) {
+		samplers.emplace_back(context, SamplerData{});
+		pstd::vector<TextureData> skyboxTextureData{ Scene::placeholderTextureData() };
+		textures = context.memAllocator().create_textures(skyboxTextureData, samplers);
+		return ReturnType(&textures, &samplers);
+	}
 
 
-
-
-	// Prepare Meta Data
 	SamplerData hdrSamplerData;
 	SamplerData cdfSamplerData;
 	TextureData envTextureData;
@@ -130,17 +136,17 @@ SkyBox::SkyBox(Context& context, const std::string& filePath) {
 	cdfSamplerData.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	samplers.push_back(Sampler(context, cdfSamplerData));
 
-	envTextureData.width = w;
-	envTextureData.height = h;
-	envTextureData.channels = channels;
+	envTextureData.width = _width;
+	envTextureData.height = _height;
+	envTextureData.channels = _channels;
 	envTextureData.data = reinterpret_cast<unsigned char*>(hdrData.data());
 	envTextureData.bits = 32;
 	envTextureData.size = static_cast<VkDeviceSize>(hdrData.size() * sizeof(float));
 	envTextureData.samplerIdx = 0;
 	envTextureData.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 
-	conditionalCdfTextureData.width = w;
-	conditionalCdfTextureData.height = h;
+	conditionalCdfTextureData.width = _width;
+	conditionalCdfTextureData.height = _height;
 	conditionalCdfTextureData.channels = 1;
 	conditionalCdfTextureData.data = reinterpret_cast<unsigned char*>(conditionalCdf.data());
 	conditionalCdfTextureData.bits = 32;
@@ -148,7 +154,7 @@ SkyBox::SkyBox(Context& context, const std::string& filePath) {
 	conditionalCdfTextureData.samplerIdx = 1;
 	conditionalCdfTextureData.format = VK_FORMAT_R32_SFLOAT;
 
-	marginalCdfTextureData.width = h;
+	marginalCdfTextureData.width = _height;
 	marginalCdfTextureData.height = 1;
 	marginalCdfTextureData.channels = 1;
 	marginalCdfTextureData.data = reinterpret_cast<unsigned char*> (marginalCdf.data());
@@ -161,9 +167,10 @@ SkyBox::SkyBox(Context& context, const std::string& filePath) {
 		{ envTextureData, conditionalCdfTextureData, marginalCdfTextureData },
 		samplers
 	);
-	
-	
 
+	return ReturnType(&textures, &samplers);
 }
+
+
 
 

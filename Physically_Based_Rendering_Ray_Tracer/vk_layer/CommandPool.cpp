@@ -2,15 +2,31 @@
 
 #include "vk_layer/Context.h"
 
-CommandBuffer::CommandBuffer(VkCommandBuffer command_buffer, CommandPool& commandPool):cmdBuffer(command_buffer), cmdPool(commandPool){}
+CommandBuffer::CommandBuffer(VkCommandBuffer command_buffer, CommandPool* commandPool):cmdBuffer(command_buffer), cmdPool(commandPool){}
 
 CommandBuffer::CommandBuffer(CommandBuffer&& other) noexcept : cmdBuffer(other.cmdBuffer), cmdPool(other.cmdPool) {
 	other.cmdBuffer = VK_NULL_HANDLE;
+	other.cmdPool = nullptr;
+}
+
+CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept {
+	if (this != &other) {
+		if (cmdBuffer != VK_NULL_HANDLE && cmdPool != nullptr)
+			cmdPool->cmdBuffer_queue.push(cmdBuffer);
+	}
+
+	cmdBuffer = other.cmdBuffer;
+	cmdPool = other.cmdPool;
+
+	other.cmdBuffer = VK_NULL_HANDLE;
+	other.cmdPool = nullptr;
+
+	return *this;
 }
 
 CommandBuffer::~CommandBuffer() {
-	if(cmdBuffer!=VK_NULL_HANDLE)
-		cmdPool.cmdBuffer_queue.push(cmdBuffer);
+	if(cmdBuffer!=VK_NULL_HANDLE && cmdPool!=nullptr)
+		cmdPool->cmdBuffer_queue.push(cmdBuffer);
 }
 
 void CommandBuffer::begin(bool one_time) {
@@ -94,7 +110,7 @@ void CommandPool::init(uint32_t pre_alloc_size) {
 
 CommandBuffer CommandPool::get_command_buffer() {
 	if (!total_allocated)allocate_command_buffer();
-	return CommandBuffer(cmdBuffer_queue.pop(), *this);
+	return CommandBuffer(cmdBuffer_queue.pop(), this);
 }
 
 uint32_t CommandPool::allocate_command_buffer(uint32_t num) {

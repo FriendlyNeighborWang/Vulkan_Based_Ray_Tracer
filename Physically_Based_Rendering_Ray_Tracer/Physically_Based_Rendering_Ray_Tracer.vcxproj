@@ -114,7 +114,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\Graphics\Physically Based Rendering\Physically_Based_Rendering_Ray_Tracer\Physically_Based_Rendering_Ray_Tracer\deps\glm\lib;D:\C++Libiary\glfw-3.4.bin.WIN64\lib-vc2022;E:\VulkanSDK\1.4.321.1\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glm.lib;glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glm.lib;glfw3.lib;vulkan-1.lib;shaderc_combinedd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -136,12 +136,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="base\base.h" />
+    <ClInclude Include="base\generated_descriptor_bindings.h" />
     <ClInclude Include="base\shader_base.h" />
     <ClInclude Include="deps\stb\stb_image.h" />
     <ClInclude Include="deps\stb\stb_image_write.h" />
     <ClInclude Include="deps\tiny_gltf\tiny_gltf.h" />
     <ClInclude Include="deps\tlsf\tlsf.h" />
     <ClInclude Include="graphics\CameraController.h" />
+    <ClInclude Include="graphics\FrameContext.h" />
+    <ClInclude Include="graphics\RenderPass.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphics\ResourceManager.h" />
     <ClInclude Include="graphics\Scene.h" />
     <ClInclude Include="graphics\Renderer.h" />
     <ClInclude Include="graphics\SceneLoader.h" />
@@ -159,12 +165,12 @@
     <ClInclude Include="vk_layer\ASManager.h" />
     <ClInclude Include="vk_layer\Buffer.h" />
     <ClInclude Include="vk_layer\CommandPool.h" />
-    <ClInclude Include="vk_layer\ComputePipeline.h" />
     <ClInclude Include="vk_layer\Context.h" />
     <ClInclude Include="vk_layer\DescriptorManager.h" />
     <ClInclude Include="vk_layer\Image.h" />
-    <ClInclude Include="vk_layer\RTPipeline.h" />
-    <ClInclude Include="vk_layer\ShaderManager.h" />
+    <ClInclude Include="vk_layer\Pipeline.h" />
+    <ClInclude Include="vk_layer\PipelineManager.h" />
+    <ClInclude Include="vk_layer\ShaderModule.h" />
     <ClInclude Include="vk_layer\SwapChain.h" />
     <ClInclude Include="vk_layer\SyncObject.h" />
     <ClInclude Include="vk_layer\Texture.h" />
@@ -173,11 +179,14 @@
   <ItemGroup>
     <ClCompile Include="deps\tlsf\tlsf.c" />
     <ClCompile Include="graphics\Renderer.cpp" />
+    <ClCompile Include="graphics\RenderPass.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="graphics\ResourceManager.cpp" />
     <ClCompile Include="graphics\Scene.cpp" />
     <ClCompile Include="graphics\SceneLoader.cpp" />
     <ClCompile Include="graphics\SkyBox.cpp" />
     <ClCompile Include="graphics\Window.cpp" />
-    <ClCompile Include="main.cpp" />
     <None Include="resource\Sponza\Sponza.gltf" />
     <CustomBuild Include="shader\alphaTest.rahit">
       <FileType>Document</FileType>
@@ -185,24 +194,26 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <None Include="resource\TransmissionTest\glTF\TransmissionTest.gltf" />
     <None Include="shader\light\light_Directional.glslh" />
     <None Include="shader\light\light_Mesh.glslh">
       <FileType>Document</FileType>
     </None>
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="test\util_log_test.cpp" />
     <ClCompile Include="test\util_memory_test.cpp" />
     <ClCompile Include="test\util_pstd_test.cpp" />
     <ClCompile Include="vk_layer\ASManager.cpp" />
     <ClCompile Include="vk_layer\Buffer.cpp" />
     <ClCompile Include="vk_layer\CommandPool.cpp" />
-    <ClCompile Include="vk_layer\ComputePipeline.cpp" />
     <ClCompile Include="vk_layer\Context.cpp" />
     <ClCompile Include="vk_layer\DescriptorManager.cpp" />
     <ClCompile Include="vk_layer\Image.cpp" />
-    <ClCompile Include="vk_layer\RTPipeline.cpp" />
-    <ClCompile Include="vk_layer\ShaderManager.cpp" />
+    <ClCompile Include="vk_layer\Pipeline.cpp" />
+    <ClCompile Include="vk_layer\PipelineManager.cpp" />
+    <ClCompile Include="vk_layer\ShaderModule.cpp" />
     <ClCompile Include="vk_layer\SwapChain.cpp" />
     <ClCompile Include="vk_layer\SyncObject.cpp" />
     <ClCompile Include="vk_layer\Texture.cpp" />
@@ -215,6 +226,7 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <CustomBuild Include="shader\rayGen.rgen">
       <FileType>Document</FileType>
@@ -222,6 +234,7 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <CustomBuild Include="shader\rayMiss.rmiss">
       <FileType>Document</FileType>
@@ -229,6 +242,7 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <CustomBuild Include="shader\tone_mapping.comp">
       <FileType>Document</FileType>
@@ -236,6 +250,7 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <None Include="resource\cornell_box\scene.gltf" />
     <None Include="shader\common\hitShaderCommon.glslh" />
@@ -253,6 +268,7 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <CustomBuild Include="shader\shadowRayMiss.rmiss">
       <FileType>Document</FileType>
@@ -260,6 +276,7 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <CustomBuild Include="shader\shadowRayAnyHit.rahit">
       <FileType>Document</FileType>
@@ -267,6 +284,7 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling Vulkan Shader: %(Identity)...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)shader\spv\%(Filename)%(Extension).spv</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <None Include="util\Vec.inl" />
   </ItemGroup>

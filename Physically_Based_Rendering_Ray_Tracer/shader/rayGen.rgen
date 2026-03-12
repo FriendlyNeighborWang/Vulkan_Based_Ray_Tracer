@@ -6,14 +6,14 @@
 #include "../base/shader_base.h"
 #include "./common/shaderCommon.glslh"
 
-layout(binding = BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, set = RAY_TRACING_DYNAMIC_SET, scalar) uniform SceneDynamicInfo{
+layout(binding = BINDING_PIPELINE_RAY_TRACING_DYNAMIC_DYNAMIC_INFO, set = PIPELINE_RAY_TRACING_DYNAMIC_SET, scalar) uniform SceneDynamicInfo{
 	CameraData camera;
 	uint samples_per_pixel;
 	uint iteration_depth;
 	vec2 _padding;
 } dynamicInfo;
-layout(binding = BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, set = RAY_TRACING_IMAGE_SET, rgba32f) uniform image2D storageImage;
-layout(binding = BINDING_RAY_TRACING_TLAS, set = RAY_TRACING_UNIFORM_SET) uniform accelerationStructureEXT tlas;
+layout(binding = BINDING_PIPELINE_RAY_TRACING_DYNAMIC_HDR_IMAGE, set = PIPELINE_RAY_TRACING_DYNAMIC_SET, rgba32f) uniform image2D storageImage;
+layout(binding = BINDING_PIPELINE_RAY_TRACING_STATIC_ACCELERATION_STRUCTURE, set = PIPELINE_RAY_TRACING_STATIC_SET) uniform accelerationStructureEXT tlas;
 
 
 layout(push_constant) uniform PushConsts{

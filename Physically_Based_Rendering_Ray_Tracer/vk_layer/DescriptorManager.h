@@ -20,13 +20,13 @@ public:
 	~DescriptorSetLayout();
 
 private:
-	DescriptorSetLayout(VkDevice device);
+	DescriptorSetLayout(VkDevice device, uint32_t allocate_set_num);
 
 	pstd::vector<VkDescriptorSetLayoutBinding> _bindings;
+	std::unordered_map<VkDescriptorType, uint32_t> type_num;
+	uint32_t _allocate_set_num = 0;
 
 	VkDescriptorSetLayout _layout = VK_NULL_HANDLE;
-
-	std::unordered_map<VkDescriptorType, uint32_t> type_num;
 
 	VkDevice _device = VK_NULL_HANDLE;
 };
@@ -72,14 +72,12 @@ public:
 
 	~DescriptorManager();
 
-	DescriptorSetLayout& create_null_descriptor_set_layout(const std::string& name);
+	DescriptorSetLayout& create_null_descriptor_set_layout(const std::string& name, uint32_t allocate_set_num = 1);
 
 	// Must be called after layout bindings have been added and layouts have been built
-	void init_descriptor_pool(uint32_t max_sets_num);
+	void init_descriptor_pool();
 
 	DescriptorSet& allocate_descriptor_set(const std::string& layout_name);
-
-	pstd::vector<VkDescriptorSetLayout> get_descriptor_set_layouts(const pstd::vector<std::string>& layout_names);
 
 	void update_descriptor_set();
 	

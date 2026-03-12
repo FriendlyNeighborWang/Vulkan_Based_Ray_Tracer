@@ -118,7 +118,7 @@ struct Scene {
 
 	Buffer& get_light_buffer(Context& context, SkyBox& skybox);
 	Buffer& get_material_buffer(Context& context);
-	pstd::vector<Texture>& get_textures(Context& context);
+	pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*> get_textures_and_samplers(Context& context);
 
 	Buffer& get_geometry_buffer(Context& context);
 
@@ -187,25 +187,25 @@ private:
 	
 
 
-	Buffer lightBuffer; bool if_lightBuffer_aval = false;
-	Buffer materialBuffer; bool if_materialBuffer_aval = false;
-	pstd::vector<Texture> textures_list; bool if_textures_aval = false;
+	Buffer lightBuffer; 
+	Buffer materialBuffer; 
+	pstd::vector<Texture> textures_list; 
 	pstd::vector<Sampler> samplers_list;
 	
-	Buffer geometryBuffer; bool if_geometryBuffer_aval = false;
+	Buffer geometryBuffer; 
 
-	Buffer vertexBuffer; bool if_vertexBuffer_aval = false;
-	Buffer indexBuffer; bool if_indexBuffer_aval = false;
-	Buffer texcoordBuffer; bool if_texcoordBuffer_aval = false;
-	Buffer normalBuffer; bool if_normalBuffer_aval = false;
-	Buffer tangentBuffer; bool if_tangentBuffer_aval = false;
+	Buffer vertexBuffer;
+	Buffer indexBuffer; 
+	Buffer texcoordBuffer;
+	Buffer normalBuffer; 
+	Buffer tangentBuffer; 
 	
 
-	Buffer staticSceneInfoBuffer; bool if_staticSceneInfoBuffer_aval = false;
+	Buffer staticSceneInfoBuffer; 
 
 
 	inline static TextureData _placeholderTextureData; inline static bool if_placeholderTextureData_aval = false;
-	Buffer _placeholderBuffer; bool if_placeHolderBuffer_aval = false;
+	Buffer _placeholderBuffer; 
 };
 
 

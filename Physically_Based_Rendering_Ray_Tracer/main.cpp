@@ -10,19 +10,21 @@
 
 #include "vk_layer/Image.h"
 #include "vk_layer/Context.h"
+#include "vk_layer/Pipeline.h"
 #include "vk_layer/SwapChain.h"
 #include "vk_layer/ASManager.h"
 #include "vk_layer/SyncObject.h"
-#include "vk_layer/RTPipeline.h"
 #include "vk_layer/CommandPool.h"
-#include "vk_layer/ComputePipeline.h"
+#include "vk_layer/PipelineManager.h"
 #include "vk_layer/DescriptorManager.h"
 #include "vk_layer/VkMemoryAllocator.h"
 
 #include "graphics/Window.h"
-#include "graphics/Renderer.h"
-#include "graphics/SceneLoader.h"
 #include "graphics/SkyBox.h"
+#include "graphics/Renderer.h"
+#include "graphics/RenderPass.h"
+#include "graphics/SceneLoader.h"
+#include "graphics/ResourceManager.h"
 
 
 
@@ -109,8 +111,8 @@ int main() {
 	// Scene scene = sceneLoader.LoadScene("resource/cornell_box/scene.gltf");
 	// Scene scene = sceneLoader.LoadScene("resource/TransmissionTest/glTF/TransmissionTest.gltf");
 
-	SkyBox skybox(context, "./resource/skybox/citrus_orchard_road_puresky_4k.hdr");
-	// SkyBox skybox(context);
+	SkyBox skybox("./resource/skybox/citrus_orchard_road_puresky_4k.hdr");
+	// SkyBox skybox();
 
 	// Create Renderer
 	Renderer renderer(context, window, swapchain, scene);
@@ -120,23 +122,9 @@ int main() {
 	TLAS accelerationStructure = context.asManager().get_tlas(scene);
 
 
-	// Import Shader 
-	context.shaderManager().add_raygen_shader("./shader/spv/rayGen.rgen.spv");
-	context.shaderManager().add_miss_shader("./shader/spv/rayMiss.rmiss.spv");
-	context.shaderManager().add_miss_shader("./shader/spv/shadowRayMiss.rmiss.spv");
-	context.shaderManager().add_hit_group_shader("./shader/spv/closestHit.rchit.spv", "./shader/spv/alphaTest.rahit.spv");
-	context.shaderManager().add_hit_group_shader("./shader/spv/shadowRayHit.rchit.spv", "./shader/spv/shadowRayAnyHit.rahit.spv");
-
-	context.shaderManager().build_shader_stages_and_shader_groups();
-
-	// Create Descriptor Set & Resource
-	// Allocate Image & Image Layout Transition to GENERAL
-	renderer.create_images();
-	const auto& hdrImages = renderer.get_hdrImages();
-	const auto& ldrImages = renderer.get_ldrImages();
-
-	renderer.create_uniform_buffer();
-	const auto& dynamicInfoBuffers = renderer.get_uniform_buffers();
+	// Create Pipeline & Import Shader
+	RTPipeline& rtPipeline = context.pipelineManager().create_rt_pipeline("RAY_TRACING");
+	ComputePipeline& toneMappingPipeline = context.pipelineManager().create_compute_pipeline("TONE_MAPPING");
 	
 
 	// Scene Data
@@ -148,123 +136,63 @@ int main() {
 	Buffer& normalBuffer = scene.get_normal_buffer(context);
 	Buffer& tangentBuffer = scene.get_tangent_buffer(context);
 	Buffer& texcoordBuffer = scene.get_texcoord_buffer(context);
-	pstd::vector<Texture>& textures = scene.get_textures(context);
+	auto textures_and_samplers= scene.get_textures_and_samplers(context);
+	auto& textures = *pstd::get<0>(textures_and_samplers);
+	auto& samplers = *pstd::get<1>(textures_and_samplers);
+	auto skybox_textures_and_samplers = skybox.get_skybox_textures_and_samplers(context);
+	auto& skybox_textures = *pstd::get<0>(skybox_textures_and_samplers);
+	auto& skybox_samplers = *pstd::get<1>(skybox_textures_and_samplers);
+
 
 	// Scene Static Info
 	Buffer& staticSceneInfoBuffer = scene.get_static_scene_info(context);
-
-	const pstd::vector<Texture>& skyboxTextures = skybox.get_skybox_textures();
-
-
-	// Create Descriptor Set Layout
 	
-	DescriptorSetLayout& rt_dynamic_layout = context.descriptorManager().create_null_descriptor_set_layout("RAY_TRACING_DYNAMIC_SET_LAYOUT");
-	DescriptorSetLayout& rt_image_layout = context.descriptorManager().create_null_descriptor_set_layout("RAY_TRACING_IMAGE_SET_LAYOUT");
-	DescriptorSetLayout& rt_uniform_layout = context.descriptorManager().create_null_descriptor_set_layout("RAY_TRACING_UNIFORM_SET_LAYOUT");
-	DescriptorSetLayout& rt_skybox_layout = context.descriptorManager().create_null_descriptor_set_layout("RAY_TRACING_SKYBOX_LAYOUT");
-	DescriptorSetLayout& compute_tone_mapping_layout = context.descriptorManager().create_null_descriptor_set_layout("COMPUTE_TONE_MAPPING_SET_LAYOUT");
-	
-
-	rt_dynamic_layout.add_binding(BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-
-	rt_dynamic_layout.build();
+	// RenderPass
+	// RenderPass rayTracingPass("RAY_TRACING", RenderPass::PassType::RAY_TRACING);
+	// RenderPass toneMappingPass("TONE_MAPPING", RenderPass::PassType::COMPUTE);
 
 
-	rt_image_layout.add_binding(BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-
-	rt_image_layout.build();
-
-
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_SCENE_STATIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_TLAS, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_LIGHT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_TEXCOORD0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_TEXTURE_ARRAY, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, static_cast<uint32_t>(textures.size()));
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_NORMAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	rt_uniform_layout.add_binding(BINDING_RAY_TRACING_TANGENT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-
-	rt_uniform_layout.build();
-
-	
-	rt_skybox_layout.add_binding(BINDING_RAY_TRACING_SKYBOX_TEXTURE_ARRAY, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR, static_cast<uint32_t>(skyboxTextures.size()));
-
-	rt_skybox_layout.build();
+	ResourceManager& resourceManager = context.resourceManager();
+	resourceManager.register_resources(std::move(staticSceneInfoBuffer), "SCENE_STATIC_INFO", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR);
+	resourceManager.register_resources(std::move(vertexBuffer), "VERTEX_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(indexBuffer), "INDEX_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(materialBuffer), "MATERIAL_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(geometryBuffer), "GEOMETRY_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(lightBuffer), "LIGHT_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(normalBuffer), "NORMAL_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(tangentBuffer), "TANGENT_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(texcoordBuffer), "TEXCOORD_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(textures), std::move(samplers), "TEXTURE_ARRAY", RF_STATIC, { &rtPipeline },
+		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(accelerationStructure), "ACCELERATION_STRUCTURE", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	resourceManager.register_resources(std::move(skybox_textures), std::move(skybox_samplers), "SKYBOX_TEXTURE_ARRAY", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR);
 
 
-	compute_tone_mapping_layout.add_binding(BINDING_COMPUTE_TONE_MAPPING_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-	compute_tone_mapping_layout.add_binding(BINDING_COMPUTE_TONE_MAPPING_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-
-	compute_tone_mapping_layout.build();
-
-	// Allocate Descriptor Set & Write Descriptor Set
-
-	context.descriptorManager().init_descriptor_pool(2 + 3 * MAX_FRAMES_IN_FLIGHT);
-	DescriptorSet& rtUniformSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_UNIFORM_SET_LAYOUT");
-	DescriptorSet& rtSkyBoxSet = context.descriptorManager().allocate_descriptor_set("RAY_TRACING_SKYBOX_LAYOUT");
-	pstd::vector<DescriptorSet*> rtDynamicSets(MAX_FRAMES_IN_FLIGHT);
-	pstd::vector<DescriptorSet*> rtImageSets(MAX_FRAMES_IN_FLIGHT);
-	pstd::vector<DescriptorSet*> toneMappingSets(MAX_FRAMES_IN_FLIGHT);
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-		rtDynamicSets[i] = &context.descriptorManager().allocate_descriptor_set("RAY_TRACING_DYNAMIC_SET_LAYOUT");
-		rtImageSets[i] = &context.descriptorManager().allocate_descriptor_set("RAY_TRACING_IMAGE_SET_LAYOUT");
-		toneMappingSets[i] = &context.descriptorManager().allocate_descriptor_set("COMPUTE_TONE_MAPPING_SET_LAYOUT");
-	}
+	resourceManager.register_resources(static_cast<VkDeviceSize>(sizeof(Scene::SceneDynamicInfo)), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, "DYNAMIC_INFO", RF_PER_FRAME, { &rtPipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
 
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_SCENE_STATIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, staticSceneInfoBuffer);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_TLAS, accelerationStructure);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_VERTICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vertexBuffer);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_INDICES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, indexBuffer);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_MATERIAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, materialBuffer);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_GEOMETRY, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, geometryBuffer);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_LIGHT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, lightBuffer);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_TEXCOORD0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, texcoordBuffer);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_TEXTURE_ARRAY, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, textures);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_NORMAL, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, normalBuffer);
-	rtUniformSet.descriptor_write(BINDING_RAY_TRACING_TANGENT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, tangentBuffer);
-
-	
-
-	rtSkyBoxSet.descriptor_write(BINDING_RAY_TRACING_SKYBOX_TEXTURE_ARRAY, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, skyboxTextures);
-
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-		rtDynamicSets[i]->descriptor_write(BINDING_RAY_TRACING_SCENE_DYNAMIC_INFO, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, dynamicInfoBuffers[i]);
-
-		rtImageSets[i]->descriptor_write(BINDING_RAY_TRACING_RENDERING_TARGET_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, hdrImages[i]);
-
-		toneMappingSets[i]->descriptor_write(BINDING_COMPUTE_TONE_MAPPING_HDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, hdrImages[i]);
-		toneMappingSets[i]->descriptor_write(BINDING_COMPUTE_TONE_MAPPING_LDR_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, ldrImages[i]);
-	}
+	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "HDR_IMAGE", RF_PER_FRAME | RF_WINDOW_SIZE_RELATED, { &rtPipeline, &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "LDR_IMAGE", RF_PER_FRAME | RF_WINDOW_SIZE_RELATED, { &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, VK_IMAGE_LAYOUT_GENERAL);
 
 
-	context.descriptorManager().update_descriptor_set();
+	resourceManager.build();
+
+	// Register Shaders
+
+	rtPipeline.register_raygen_shader("./shader/rayGen.rgen");
+	rtPipeline.register_miss_shader("./shader/rayMiss.rmiss");
+	rtPipeline.register_miss_shader("./shader/shadowRayMiss.rmiss");
+	rtPipeline.register_hit_group_shader("./shader/closestHit.rchit", "./shader/alphaTest.rahit");
+	rtPipeline.register_hit_group_shader("./shader/shadowRayHit.rchit", "./shader/shadowRayAnyHit.rahit");
+
+	toneMappingPipeline.register_compute_shader("./shader/tone_mapping.comp");
+
+	rtPipeline.build(context, sizeof(PushConstants));
+	toneMappingPipeline.build(context, sizeof(ToneMappingPushConstants));
 
 
-
-	// Create Pipeline (Order is important)
-	context.rtPipeline().create_pipeline(context.descriptorManager().get_descriptor_set_layouts({ "RAY_TRACING_DYNAMIC_SET_LAYOUT", "RAY_TRACING_IMAGE_SET_LAYOUT", "RAY_TRACING_UNIFORM_SET_LAYOUT", "RAY_TRACING_SKYBOX_LAYOUT"}));
-
-	ComputePipeline tmPipeline(context);
-	tmPipeline.create_pipeline("./shader/spv/tone_mapping.comp.spv", context.descriptorManager().get_descriptor_set_layouts({ "COMPUTE_TONE_MAPPING_SET_LAYOUT" }), sizeof(ToneMappingPushConstants));
-
-	// Build Shader Binding Table
-	context.shaderManager().build_shader_binding_table(context.rtPipeline());
-
-
-	// Register Resource 
-	renderer.register_descriptor_set("rtUniformSet", rtUniformSet);
-	renderer.register_descriptor_set("rtSkyBoxSet", rtSkyBoxSet);
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-		renderer.register_descriptor_set("rtDynamicSet" + std::to_string(i), *rtDynamicSets[i]);
-		renderer.register_descriptor_set("rtImageSet" + std::to_string(i), *rtImageSets[i]);
-		renderer.register_descriptor_set("computeToneMappingSet" + std::to_string(i), *toneMappingSets[i]);
-	}
-	renderer.register_compute_pipeline("tmPipeline", tmPipeline);
-	
+	// Render
+	renderer.prepare_frame_context();
 
 	// renderer.offline_render("result.hdr");
 	renderer.realtime_render();

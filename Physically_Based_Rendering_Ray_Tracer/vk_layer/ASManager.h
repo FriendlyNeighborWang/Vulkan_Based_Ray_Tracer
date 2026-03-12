@@ -22,12 +22,12 @@ public:
 
 private:
 	
-	BLAS(ASManager* address, Mesh& mesh, const Buffer& vertexBuffer, const Buffer& indexBuffer);
+	BLAS(Context& context, Mesh& mesh, const Buffer& vertexBuffer, const Buffer& indexBuffer);
 
 	Buffer asBuffer;
 	VkAccelerationStructureKHR as = VK_NULL_HANDLE;
 
-	ASManager* pasm = nullptr;
+	VkDevice _device = VK_NULL_HANDLE;
 };
 
 class TLAS {
@@ -43,13 +43,13 @@ public:
 
 private:
 
-	TLAS(ASManager* address, Scene& scene);
+	TLAS(Context& context, Scene& scene);
 
 	Buffer asBuffer;
 	pstd::vector<BLAS> blas;
 	VkAccelerationStructureKHR as = VK_NULL_HANDLE;
 
-	ASManager* pasm = nullptr;
+	VkDevice _device = VK_NULL_HANDLE;
 
 };
 
@@ -71,15 +71,15 @@ private:
 
 	void load_function();
 
-	PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;
+	static inline PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR = nullptr;
 
-	PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR;
+	static inline PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR = nullptr;
 
-	PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR;
+	static inline PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR = nullptr;
 
-	PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
+	static inline PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR = nullptr;
 
-	PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;	
+	static inline PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR = nullptr;
 
 
 

@@ -10,7 +10,9 @@
 class CommandBuffer {
 	friend class CommandPool;
 public:
+	CommandBuffer() = default;
 	CommandBuffer(CommandBuffer&& other) noexcept;
+	CommandBuffer& operator=(CommandBuffer&& other) noexcept;
 
 	void begin(bool one_time = false);
 
@@ -22,10 +24,10 @@ public:
 	~CommandBuffer();
 
 private:
-	CommandBuffer(VkCommandBuffer command_buffer, CommandPool& commandPool);
+	CommandBuffer(VkCommandBuffer command_buffer, CommandPool* commandPool);
 
 	VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
-	CommandPool& cmdPool;
+	CommandPool* cmdPool = nullptr;
 };
 
 class CommandPool {

@@ -102,9 +102,6 @@
     <ClInclude Include="vk_layer\Buffer.h">
       <Filter>vk_layer</Filter>
     </ClInclude>
-    <ClInclude Include="vk_layer\ShaderManager.h">
-      <Filter>vk_layer</Filter>
-    </ClInclude>
     <ClInclude Include="util\FileOp.h">
       <Filter>util</Filter>
     </ClInclude>
@@ -123,9 +120,6 @@
     <ClInclude Include="vk_layer\ASManager.h">
       <Filter>vk_layer</Filter>
     </ClInclude>
-    <ClInclude Include="vk_layer\RTPipeline.h">
-      <Filter>vk_layer</Filter>
-    </ClInclude>
     <ClInclude Include="base\shader_base.h">
       <Filter>base</Filter>
     </ClInclude>
@@ -137,9 +131,6 @@
     </ClInclude>
     <ClInclude Include="graphics\Renderer.h">
       <Filter>graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="vk_layer\ComputePipeline.h">
-      <Filter>vk_layer</Filter>
     </ClInclude>
     <ClInclude Include="util\Timer.h">
       <Filter>util</Filter>
@@ -158,6 +149,27 @@
     </ClInclude>
     <ClInclude Include="deps\stb\stb_image.h">
       <Filter>deps\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\RenderPass.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\ResourceManager.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="base\generated_descriptor_bindings.h">
+      <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\ShaderModule.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\Pipeline.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_layer\PipelineManager.h">
+      <Filter>vk_layer</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\FrameContext.h">
+      <Filter>graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -182,7 +194,6 @@
     <ClCompile Include="vk_layer\SwapChain.cpp">
       <Filter>vk_layer</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp" />
     <ClCompile Include="vk_layer\CommandPool.cpp">
       <Filter>vk_layer</Filter>
     </ClCompile>
@@ -192,16 +203,10 @@
     <ClCompile Include="vk_layer\Buffer.cpp">
       <Filter>vk_layer</Filter>
     </ClCompile>
-    <ClCompile Include="vk_layer\ShaderManager.cpp">
-      <Filter>vk_layer</Filter>
-    </ClCompile>
     <ClCompile Include="vk_layer\DescriptorManager.cpp">
       <Filter>vk_layer</Filter>
     </ClCompile>
     <ClCompile Include="vk_layer\ASManager.cpp">
-      <Filter>vk_layer</Filter>
-    </ClCompile>
-    <ClCompile Include="vk_layer\RTPipeline.cpp">
       <Filter>vk_layer</Filter>
     </ClCompile>
     <ClCompile Include="vk_layer\SyncObject.cpp">
@@ -209,9 +214,6 @@
     </ClCompile>
     <ClCompile Include="graphics\Renderer.cpp">
       <Filter>graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="vk_layer\ComputePipeline.cpp">
-      <Filter>vk_layer</Filter>
     </ClCompile>
     <ClCompile Include="graphics\Scene.cpp">
       <Filter>graphics</Filter>
@@ -227,6 +229,22 @@
     </ClCompile>
     <ClCompile Include="graphics\SceneLoader.cpp">
       <Filter>graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="graphics\RenderPass.cpp">
+      <Filter>graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="graphics\ResourceManager.cpp">
+      <Filter>graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="vk_layer\ShaderModule.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\Pipeline.cpp">
+      <Filter>vk_layer</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_layer\PipelineManager.cpp">
+      <Filter>vk_layer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

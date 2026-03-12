@@ -57,6 +57,12 @@ struct MeshInstance;
 struct Scene;
 class SkyBox;
 
+// Graphics
+class Renderer;
+class RenderPass;
+class FrameContext;
+class ResourceManager;
+
 // Util
 class TimerManager;
 
@@ -71,18 +77,33 @@ class Texture;
 class CommandBuffer;
 class CommandPool;
 class VkMemoryAllocator;
-class ShaderManager;
 class DescriptorSetLayout;
 class DescriptorSet;
 class DescriptorManager;
 class BLAS;
 class TLAS;
 class ASManager;
+class ShaderModule;
+class Pipeline;
 class RTPipeline;
 class ComputePipeline;
+class PipelineManager;
 class Fence;
 class Semaphore;
 
+// --------------------Resource Flag--------------------
+using ResourceFlag = uint64_t;
+
+// Update Frequency [bit 0:15]
+constexpr ResourceFlag RF_STATIC = 0x0000'0000'0000'0001ULL;
+constexpr ResourceFlag RF_PER_FRAME = 0x0000'0000'0000'0002ULL;
+
+
+// Other Flag [bit 16: 31]
+constexpr ResourceFlag RF_WINDOW_SIZE_RELATED = 0x0000'0000'0001'0000ULL;
+
+// Mask
+constexpr ResourceFlag RF_FREQUENCY_MASK = 0x0000'0000'0000'000FULL;
 
 
 #endif // !PBRT_BASE

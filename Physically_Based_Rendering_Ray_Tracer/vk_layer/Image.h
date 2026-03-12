@@ -14,7 +14,9 @@ public:
 
 	static VkImageView create_imageview(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
-	void transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout, VkAccessFlags srcAccess, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage);
+	void transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout, VkAccessFlags nextAccess,  VkPipelineStageFlags nextStage);
+
+	void transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout);
 
 	void* map_memory();
 	void unmap_memory();
@@ -23,15 +25,21 @@ public:
 
 	operator VkImage() const { return _image; }
 	operator VkImageView() const { return _imageView; }
+	bool is_aval() const { return _image != VK_NULL_HANDLE; }
 
 	VkExtent2D extent;
 	VkImageTiling tiling;
 	VkImageLayout layout;
 	VkFormat format;
 	VkDeviceSize size;
+	VkImageUsageFlags usage;
+	VkMemoryPropertyFlags memoryProperties;
+
+	VkAccessFlags currentAccessFlags = 0;
+	VkPipelineStageFlags currentPipelineStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 	
 private:
-	Image(VkDevice device, VkDeviceMemory memory, VkImage image, VkImageView imageView, VkExtent2D extent, VkImageTiling tiling, VkImageLayout layout, VkFormat format, VkDeviceSize size);
+	Image(VkDevice device, VkDeviceMemory memory, VkImage image, VkImageView imageView, VkExtent2D extent, VkImageTiling tiling, VkImageLayout layout, VkFormat format, VkDeviceSize size, VkImageUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
 
 	void* map_address = nullptr;
 

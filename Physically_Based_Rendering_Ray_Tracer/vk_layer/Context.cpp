@@ -1,11 +1,12 @@
 #include "vk_layer/Context.h"
 #include "vk_layer/SwapChain.h"
-#include "vk_layer/ShaderManager.h"
-#include "vk_layer/VkMemoryAllocator.h"
-#include "vk_layer/CommandPool.h"
-#include "vk_layer/DescriptorManager.h"
 #include "vk_layer/ASManager.h"
-#include "vk_layer/RTPipeline.h"
+#include "vk_layer/CommandPool.h"
+#include "vk_layer/PipelineManager.h"
+#include "vk_layer/VkMemoryAllocator.h"
+#include "vk_layer/DescriptorManager.h"
+
+#include "graphics/ResourceManager.h"
 
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -14,12 +15,12 @@
 #include <cstring>
 
 Context::Context(){
-	_shaderManager = std::make_unique<ShaderManager>(*this);
 	_memAllocator = std::make_unique<VkMemoryAllocator>(*this);
 	_cmdPool = std::make_unique<CommandPool>(*this);
 	_asManager = std::make_unique<ASManager>(*this);
-	_rtPipeline = std::make_unique<RTPipeline>(*this);
 	_descriptorManager = std::make_unique<DescriptorManager>(*this);
+	_pipelineManager = std::make_unique<PipelineManager>(*this);
+	_resourceManager = std::make_unique<ResourceManager>(*this);
 }
 
 
@@ -220,12 +221,11 @@ void Context::create_device() {
 }
 
 void Context::init() {
-	_shaderManager->init();
 	_memAllocator->init();
 	_cmdPool->init(5);
 	_descriptorManager->init();
 	_asManager->init();
-	_rtPipeline->init();
+	_pipelineManager->init();
 }
 
 // Destructor
@@ -233,12 +233,12 @@ Context::~Context() {
 	std::cout << std::endl;
 	LOG_STREAM("Context") << "Begin to deconstruct:" << std::endl;
 
-	_rtPipeline.reset();
+	_resourceManager.reset();
 	_asManager.reset();
 	_descriptorManager.reset();
 	_cmdPool.reset();
 	_memAllocator.reset();
-	_shaderManager.reset();
+	_pipelineManager.reset();
 
 	if (device != VK_NULL_HANDLE) {
 		vkDestroyDevice(device, nullptr);
@@ -386,12 +386,12 @@ Context::operator const VkInstance& () const { return instance; }
 Context::operator const VkPhysicalDevice& () const { return physicalDevice; }
 Context::operator const VkDevice& () const { return device; }
 
-ShaderManager& Context::shaderManager() { return *_shaderManager; }
 VkMemoryAllocator& Context::memAllocator() { return *_memAllocator; }
 CommandPool& Context::cmdPool() { return *_cmdPool; }
 DescriptorManager& Context::descriptorManager() { return *_descriptorManager; }
 ASManager& Context::asManager() { return *_asManager; }
-RTPipeline& Context::rtPipeline() { return *_rtPipeline; }
+PipelineManager& Context::pipelineManager() { return *_pipelineManager; }
+ResourceManager& Context::resourceManager() { return *_resourceManager; }
 
 Context::Queue& Context::gc_queue() { return graphicsAndComputeQueue; }
 Context::Queue& Context::present_queue() { return presentQueue; }
