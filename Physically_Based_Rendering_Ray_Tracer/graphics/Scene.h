@@ -64,18 +64,23 @@ struct Material {
 	uint32_t materialType;
 	Vector3f emission{ 0.0f };
 	Vector4f albedo{ 1.0f };
+	Vector3f specular{ 1.0f };
 	float metallic{ 1.0f };
 	float roughness{ 1.0f };
 	float transmissionFactor{ 0.0f };
+	float specularFactor{ 1.0f };
+	float ior{ 1.5f };
 	int emissiveTexture = -1;
 	int albedoTexture = -1;
 	int metallicRoughnessTexture = -1;
 	int normalTexture = -1;
 	int transmissionTexture = -1;
+	int specularTexture = -1;
+	int specularColorTexture = -1;
 	uint32_t alphaMode = ALPHA_MODE_OPAQUE;
 	float alphaCutoff = 0.0;
 	uint32_t doublesided = 1;
-	uint32_t _padding;
+	uint32_t _padding[2];
 };
 
 struct Geometry {

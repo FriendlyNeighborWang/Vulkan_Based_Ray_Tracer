@@ -196,7 +196,49 @@ void SceneLoader::loadMaterial(Scene& scene) {
 			}
 		}
 
+		// IOR
+		if (auto extIt = mat.extensions.find("KHR_materials_ior"); extIt != mat.extensions.end()) {
+			const auto& ior = extIt->second;
+			if (ior.Has("ior")) {
+				material.ior = static_cast<float>(ior.Get("ior").GetNumberAsDouble());
+			}
+		}
 
+		// Specular 
+		if (auto extIt = mat.extensions.find("KHR_materials_specular"); extIt != mat.extensions.end()) {
+			const auto& specular = extIt->second;
+			if (specular.Has("specularFactor")) {
+				material.specularFactor = static_cast<float>(specular.Get("specularFactor").GetNumberAsDouble());
+			}
+
+			if (specular.Has("specularColorFactor")) {
+				const auto& arr = specular.Get("specularColorFactor");
+				if (arr.ArrayLen() == 3) {
+					material.specular = Vector3f(
+						static_cast<float>(arr.Get(0).GetNumberAsDouble()),
+						static_cast<float>(arr.Get(1).GetNumberAsDouble()),
+						static_cast<float>(arr.Get(2).GetNumberAsDouble())
+					);
+				}
+			}
+
+			if (specular.Has("specularTexture")) {
+				material.specularTexture = specular.Get("specularTexture").Get("index").GetNumberAsInt();
+				if (material.specularTexture != -1) {
+					auto& tex = scene.textures[material.specularTexture];
+					tex.format = findTextureFormat(tex, false);
+				}
+			}
+			
+			if (specular.Has("specularColorTexture")) {
+				material.specularColorTexture = specular.Get("specularColorTexture").Get("index").GetNumberAsInt();
+				if (material.specularColorTexture != -1) {
+					auto& tex = scene.textures[material.specularColorTexture];
+					tex.format = findTextureFormat(tex, true);
+				}
+			}
+
+		}
 
 
 		scene.materials.push_back(material);

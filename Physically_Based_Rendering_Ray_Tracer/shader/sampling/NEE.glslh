@@ -36,6 +36,10 @@ vec3 evaluateDI(vec3 N, vec3 V, vec3 geoN, vec3 shadingPos, MaterialSample mat, 
 		return vec3(0.0);
 	}
 
+	if(dot(geoN, shadowRayDirection) <= 0.0 && mat.transmissionFactor < 1e-5){
+		return vec3(0.0);
+	}
+
 	vec3 offsetNormal = dot(geoN, shadowRayDirection) > 0.0 ? geoN : -geoN;
 	vec3 shadowRayOrigin = offsetPositionAlongNormal(shadingPos, offsetNormal);
 
@@ -66,24 +70,6 @@ vec3 evaluateDI(vec3 N, vec3 V, vec3 geoN, vec3 shadingPos, MaterialSample mat, 
 		radiance = lights[lightSample.lightIdx].emission;
 	}
 	vec3 bsdf = evaluateMaterial(N, V, shadowRayDirection, mat);
-
-	// Debug
-
-	/* if(gl_LaunchIDEXT.x==518 && gl_LaunchIDEXT.y == 414){
-		float NdotV = dot(N, V);
-		if(NdotV <= 0.0){
-			debugPrintfEXT("NdotV = %.4f\n bsdf = (%.4f, %.4f, %.4f)\n", 
-				NdotV, bsdf.x, bsdf.y, bsdf.z
-			);
-		}else{
-			debugPrintfEXT("bsdf = (%.4f, %.4f, %.4f)\n", 
-				bsdf.x, bsdf.y, bsdf.z
-			);
-		}
-			
-	}*/
-
-	// Debug
 
 	float MIS_weight = 1.0f;
 
@@ -116,16 +102,6 @@ vec3 evaluateII(vec3 N, vec3 V, MaterialSample mat, out vec3 weight, out float p
 
 	// Ignore MIS weight, as in Indirect Illumination pdf_light=0, MIS weight = 1
 	weight = bsdf * abs(dot(N, L)) / pdf_bsdf;
-
-	// Debug
-	/* if(gl_LaunchIDEXT.x == 526 && gl_LaunchIDEXT.y == 902){
-		if(length(weight) < 1e-5){
-			debugPrintfEXT("bsdf = (%.6f, %.6f, %.6f), pdf_bsdf = %.6f\n", 
-				bsdf.x, bsdf.y, bsdf.z, pdf_bsdf
-			);
-		}
-	}*/
-	// Debug
 	
 	
 	return L;
@@ -171,21 +147,16 @@ vec3 sampleNEE(vec3 V, HitInfo hitInfo, inout LastIIInfo lastInfo, out vec3 weig
 
 	// Indirect Illumination
 	L = evaluateII(currentNormal, V, mat, weight, lastInfo.bsdfPdf, rngState);
-	
-
-	// Debug
-	/*if(gl_LaunchIDEXT.x == 526 && gl_LaunchIDEXT.y == 902){
-		debugPrintfEXT("DI_radiance = (%.6f, %.6f, %.6f)\n  weight = (%.6f, %.6f, %.6f)\n",
-		DI_radiance.x, DI_radiance.y, DI_radiance.z, weight.x, weight.y, weight.z);
-	}*/
-
-	// Debug
+	if(dot(L, geoNormal) < 0.0 && mat.transmissionFactor < 1e-5){
+		lastInfo.bsdfPdf = 0.0;
+		ifStop = true;
+	}
 
 	lastInfo.shadingPoint = currentPos;
 	lastInfo.available = true;
 
 
-	if(L == vec3(0.0))
+	if(lastInfo.bsdfPdf < 1e-5)
 		ifStop = true;
 	else 
 		ifStop = false;

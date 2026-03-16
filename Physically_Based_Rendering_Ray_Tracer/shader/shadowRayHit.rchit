@@ -7,8 +7,7 @@ layout(location = 1) rayPayloadInEXT ShadowRayInfo srd;
 
 void main(){
 	float hitT = gl_HitTEXT;
-	float epsilon = 0.01;
 
-	if(abs(hitT - srd.targetT) < epsilon)
+	if(abs(hitT - srd.targetT) < 1e-4)
 		srd.shadowBlocked = false;
 }

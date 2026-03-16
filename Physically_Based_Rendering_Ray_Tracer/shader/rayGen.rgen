@@ -45,7 +45,7 @@ void main(){
 	vec3 summedPixelColor = vec3(0.0);
 
 	for(int sampleIdx = 0; sampleIdx < NUM_SAMPLES; sampleIdx++){
-		pld.rngState = uint((pushConstants.sample_batch * NUM_SAMPLES + sampleIdx) * resolution.y * resolution.x + pixel.y * resolution.x + pixel.x);
+		pld.rngState = uint((pushConstants.sample_batch * NUM_SAMPLES + sampleIdx) * resolution.y * resolution.x + pixel.y * resolution.x + pixel.x) ^ (pushConstants.current_frame * 1664525u + 1013904223u);
 		pld.radiance = vec3(0.0);
 		pld.throughput = vec3(1.0);
 		pld.lastIIInfo.available = false;
@@ -73,9 +73,9 @@ void main(){
 				0,
 				0,
 				rayOrigin,
-				dynamicInfo.camera.znear,
+				0.001,
 				rayDirection,
-				dynamicInfo.camera.zfar,
+				10000.0,
 				0
 			);
 
@@ -97,7 +97,6 @@ void main(){
 
 		averagePixelColor = (pushConstants.sample_batch  * previousAverageColor + averagePixelColor)/(pushConstants.sample_batch + 1);
 	}
-
 
 	imageStore(storageImage, pixel, vec4(averagePixelColor, 0.0));
 

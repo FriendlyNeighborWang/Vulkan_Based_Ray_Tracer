@@ -11,8 +11,8 @@ void main(){
 	vec3 L = vec3(0.0);
 	vec3 weight = vec3(0.0);
 	vec3 radiance = sampleNEE(V, hitInfo, pld.lastIIInfo, weight, L, pld.ifStop, pld.rngState);
-	
-	
+
+
 	pld.radiance += pld.throughput * radiance;
 	pld.throughput *= weight;
 	pld.rayOrigin = (dot(L, hitInfo.worldGeoNormal) < 0.0) ? 

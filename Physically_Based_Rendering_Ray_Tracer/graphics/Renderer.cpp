@@ -17,65 +17,13 @@
 
 #include "stb_image_write.h"
 
-Renderer::Renderer(Context& context, Window& window, SwapChain& swapChain, Scene& scene) :_context(context), window(window), swapChain(swapChain), scene(scene), cameraController(scene.dynamicInfo.camera){
+#include <cstdlib>
+
+Renderer::Renderer(Context& context, Window& window, SwapChain& swapChain, Scene& scene) :_context(context), window(window), swapChain(swapChain), scene(scene), inputManager(window, scene.dynamicInfo){
 	// Load Dynamic Function
 	vkCmdTraceRaysKHR = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(context, "vkCmdTraceRaysKHR"));
 }
 Renderer::~Renderer() = default;
-
-
-//void Renderer::create_images() {
-//	hdrImages.clear();
-//	ldrImages.clear();
-//
-//	hdrImages.reserve(MAX_FRAMES_IN_FLIGHT);
-//	ldrImages.reserve(MAX_FRAMES_IN_FLIGHT);
-//
-//
-//	CommandBuffer cmdBuffer = _context.cmdPool().get_command_buffer();
-//	cmdBuffer.begin();
-//
-//	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-//		Image renderTarget = _context.memAllocator().create_image(
-//			swapChain.getExtent(),
-//			VK_FORMAT_R32G32B32A32_SFLOAT,
-//			VK_IMAGE_TILING_OPTIMAL,
-//			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-//			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-//		);
-//
-//		Image ldrImage = _context.memAllocator().create_image(
-//			swapChain.getExtent(),
-//			VK_FORMAT_R8G8B8A8_UNORM,
-//			VK_IMAGE_TILING_OPTIMAL,
-//			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-//			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-//		);
-//
-//		renderTarget.transition_layout(
-//			_context, cmdBuffer,
-//			VK_IMAGE_LAYOUT_GENERAL,
-//			0, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-//			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-//			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR
-//		);
-//
-//		ldrImage.transition_layout(
-//			_context, cmdBuffer,
-//			VK_IMAGE_LAYOUT_GENERAL,
-//			0, VK_ACCESS_SHADER_WRITE_BIT,
-//			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-//			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
-//		);
-//
-//
-//		hdrImages.push_back(std::move(renderTarget));
-//		ldrImages.push_back(std::move(ldrImage));
-//	}
-//
-//
-//	cmdBuffer.end_and_submit(_context.gc_queue(), true);
-//}
 
 void Renderer::prepare_frame_context() {
 	while (_context.cmdPool().available_num() < MAX_FRAMES_IN_FLIGHT + 3)
@@ -112,16 +60,15 @@ void Renderer::recreateSwapChain() {
 }
 
 void Renderer::updateDynamicSceneInfo(Timer& timer, FrameContext& fc) {
-	window.process_input();
+	// Update Data
+	inputManager.update(timer.get_delta());
 
 	auto& dynamic_info = scene.dynamicInfo;
-	// update Data
-	cameraController.update(window, timer.get_delta());
-
+	
 	// Write into Uniform Buffer
 	auto& dynamic_info_buffer = fc.buffers.find("DYNAMIC_INFO")->second;
 
-	dynamic_info_buffer->write_buffer(&dynamic_info.camera, sizeof(dynamic_info.camera), scene.dynamicInfo.camera_data_offset());
+	dynamic_info_buffer->write_buffer(&dynamic_info, sizeof(dynamic_info));
 
 }
 
@@ -162,7 +109,7 @@ void Renderer::realtime_render() {
 	
 	// Set Renderring param
 	auto& renderingSeting = scene.dynamicInfo;
-	renderingSeting.iteration_depth = 4;
+	renderingSeting.iteration_depth = 3;
 	renderingSeting.samples_per_pixel = 8;
 	updateRenderingSetting(renderingSeting);
 
@@ -170,15 +117,24 @@ void Renderer::realtime_render() {
 	while (!window.should_close()) {
 		window.poll_events();
 
-		inFlightFences[currentFrame].wait();
+		// Snap Shot
+		if (inputManager.pressed_trigger({ GLFW_KEY_LEFT_SHIFT, GLFW_KEY_S })) {
+			inputManager.release_cursor();
+			vkDeviceWaitIdle(_context);
+			offline_render("snapshot.hdr");
+			break;
+		}
+
+
+		inFlightFences[frame_idx].wait();
 		
 
 		// Resource Setting & Acquire Next Image
-		FrameContext& fc = frames[currentFrame];
+		FrameContext& fc = frames[frame_idx];
 		CommandBuffer& renderCmdBuffer = fc.cmdBuffer;
 		Image& renderTarget = *fc.images.at("HDR_IMAGE");
 		Image& ldrImage = *fc.images.at("LDR_IMAGE");
-		Semaphore& imageAvaiableSemaphore = imageAvailableSemaphores[currentFrame];
+		Semaphore& imageAvaiableSemaphore = imageAvailableSemaphores[frame_idx];
 
 		uint32_t imageIndex;
 		VkResult result = swapChain.acquire_next_image(imageAvaiableSemaphore, &imageIndex);
@@ -192,9 +148,7 @@ void Renderer::realtime_render() {
 		else if(result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
 			throw std::runtime_error("Renderer::Failed to acquire swap chain image");
 
-		inFlightFences[currentFrame].reset();
-
-
+		inFlightFences[frame_idx].reset();
 
 		// Start Timing
 		generalTimer.start();
@@ -220,6 +174,7 @@ void Renderer::realtime_render() {
 		);
 		
 
+		// pushConstants.current_frame = currentFrame++;
 		pushConstants.sample_batch = 0;
 
 		vkCmdPushConstants(
@@ -353,7 +308,7 @@ void Renderer::realtime_render() {
 			{ imageAvaiableSemaphore},
 			{ VK_PIPELINE_STAGE_TRANSFER_BIT },
 			{ renderFinishedSemaphore},
-			inFlightFences[currentFrame]
+			inFlightFences[frame_idx]
 		);
 
 		result = swapChain.present(imageIndex, { renderFinishedSemaphore });
@@ -369,11 +324,40 @@ void Renderer::realtime_render() {
 		timerManager.print_real_fps("General");
 
 		
-		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+		frame_idx = (frame_idx + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 }
 
 void Renderer::offline_render(const std::string& name) {
+	// Input Rendering Setting
+	system("cls");
+
+	auto readUnit = [](const std::string& prompt, uint32_t defaultValue)-> uint32_t {
+		std::cout << prompt << " [default: " << defaultValue << "]: ";
+		std::string line;
+		std::getline(std::cin, line);
+		if (line.empty()) return defaultValue;
+		try { return static_cast<uint32_t>(std::stoul(line)); }
+		catch (...) { return defaultValue; }
+		};
+
+	uint32_t iteration_depth = readUnit("Iteration Depth", scene.dynamicInfo.iteration_depth);
+	uint32_t samples_per_pixel = readUnit("Samples Per Pixel", scene.dynamicInfo.samples_per_pixel);
+	uint32_t sample_batch = readUnit("Sample Batch", 512);
+	uint32_t image_width = readUnit("Resolution Width", 3840);
+	uint32_t image_height = readUnit("Resolution Height", 2160);
+
+
+
+	// Renderering Setting
+	Scene::SceneDynamicInfo renderingSetting = scene.dynamicInfo;
+	renderingSetting.iteration_depth = iteration_depth;
+	renderingSetting.samples_per_pixel = samples_per_pixel;
+	updateRenderingSetting(renderingSetting);
+
+	// Image Rebuild
+	_context.resourceManager().rebuild_window_size_related_resources({ image_width, image_height });
+
 	// Get Pipeline
 	RTPipeline& rtPipeline = static_cast<RTPipeline&>(_context.pipelineManager().get("RAY_TRACING"));
 	ComputePipeline& tonemappingPipeline = static_cast<ComputePipeline&>(_context.pipelineManager().get("TONE_MAPPING"));
@@ -382,7 +366,7 @@ void Renderer::offline_render(const std::string& name) {
 	auto& groupRegions = static_cast<RTPipeline&>(_context.pipelineManager().get("RAY_TRACING")).get_shader_group_regions();
 
 	// Resources
-	FrameContext& fc = frames[currentFrame];
+	FrameContext& fc = frames[frame_idx];
 	CommandBuffer& cmdBuffer = fc.cmdBuffer;
 	Image& renderTarget = *fc.images.at("HDR_IMAGE");
 
@@ -397,13 +381,7 @@ void Renderer::offline_render(const std::string& name) {
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	);
 
-	// Renderering Setting
-	Scene::SceneDynamicInfo renderingSetting = scene.dynamicInfo;
-	renderingSetting.iteration_depth = 16;
-	renderingSetting.samples_per_pixel = 64;
-	updateRenderingSetting(renderingSetting);
-
-
+	
 
 	// Timer
 	Timer& offlineTimer = timerManager.register_timer("Offline");
@@ -439,7 +417,7 @@ void Renderer::offline_render(const std::string& name) {
 	);
 
 
-	const uint32_t sample_batch = 1024;
+	
 
 	for (uint32_t current_batch = 0; current_batch < sample_batch; ++current_batch) {
 		pushConstants.sample_batch = current_batch;
@@ -504,3 +482,4 @@ void Renderer::offline_render(const std::string& name) {
 	readableBuffer.unmap_memory();
 
 }
+

@@ -11,6 +11,8 @@ Window::Window(uint32_t width, uint32_t height) :_width(width), _height(height) 
 	glfwSetFramebufferSizeCallback(window, windowResizeCallback);
 	glfwSetCursorPosCallback(window, mouseCallback);
 	glfwSetMouseButtonCallback(window, mouseButtonCallback);
+	glfwSetScrollCallback(window, scrollCallback);
+	glfwSetKeyCallback(window, keyCallback);
 }
 
 Window::~Window() {
@@ -40,10 +42,16 @@ void Window::release_cursor() {
 	mouseDeltaY = 0.0;
 }
 
-Vector2f Window::get_mouse_delta() {
+Vector2f Window::consume_mouse_delta() {
 	Vector2f delta{ mouseDeltaX, mouseDeltaY };
 	mouseDeltaX = 0.0f;
 	mouseDeltaY = 0.0f;
+	return delta;
+}
+
+float Window::consume_mouse_scroll_delta() {
+	float delta = scrollDeltaY;
+	scrollDeltaY = 0.0f;
 	return delta;
 }
 
@@ -51,10 +59,19 @@ bool Window::is_key_pressed(int key) const {
 	return glfwGetKey(window, key) == GLFW_PRESS;
 }
 
-void Window::process_input() {
-	if (cursorCaptured && is_key_pressed(GLFW_KEY_ESCAPE))
-		release_cursor();
+bool Window::is_key_released(int key) const{
+	return releasedKeys.count(key) > 0;
 }
+
+bool Window::is_mouse_button_clicked(int button) const {
+	return clickedMouseButton.count(button) > 0;
+}
+
+void Window::end_frame() {
+	releasedKeys.clear();
+	clickedMouseButton.clear();
+}
+
 
 
 
@@ -87,6 +104,17 @@ void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos) {
 
 void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 	auto app = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
-	if (!app->cursorCaptured && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-		app->capture_cursor();
+	if (action == GLFW_PRESS)
+		app->clickedMouseButton.insert(button);
+}
+
+void Window::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+	auto app = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+	app->scrollDeltaY += static_cast<float>(yoffset);
+}
+
+void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	auto app = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+	if (action == GLFW_RELEASE)
+		app->releasedKeys.insert(key);
 }

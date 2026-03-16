@@ -142,8 +142,8 @@
     <ClInclude Include="deps\stb\stb_image_write.h" />
     <ClInclude Include="deps\tiny_gltf\tiny_gltf.h" />
     <ClInclude Include="deps\tlsf\tlsf.h" />
-    <ClInclude Include="graphics\CameraController.h" />
     <ClInclude Include="graphics\FrameContext.h" />
+    <ClInclude Include="graphics\InputManager.h" />
     <ClInclude Include="graphics\RenderPass.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClInclude>
@@ -178,6 +178,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="deps\tlsf\tlsf.c" />
+    <ClCompile Include="graphics\InputManager.cpp" />
     <ClCompile Include="graphics\Renderer.cpp" />
     <ClCompile Include="graphics\RenderPass.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
@@ -187,6 +188,8 @@
     <ClCompile Include="graphics\SceneLoader.cpp" />
     <ClCompile Include="graphics\SkyBox.cpp" />
     <ClCompile Include="graphics\Window.cpp" />
+    <None Include="resource\Living_room\Living_room.gltf" />
+    <None Include="resource\San_miguel\San_miguel.gltf" />
     <None Include="resource\Sponza\Sponza.gltf" />
     <CustomBuild Include="shader\alphaTest.rahit">
       <FileType>Document</FileType>

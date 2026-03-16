@@ -1,6 +1,7 @@
 #version 460
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_debug_printf : require
 #include "../base/shader_base.h"
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
@@ -42,6 +43,7 @@ void main(){
 	vec3 mapped = ACESFilm(exposed);
 
 	vec3 gammaCorrected = pow(mapped, vec3(1.0/GAMMA));
+
 
 	imageStore(ldrImage, pixelCoord, vec4(gammaCorrected, hdrColor.a));
 

@@ -10,6 +10,7 @@ using uint = uint32_t;
 // Push Constant
 
 struct PushConstants {
+	uint current_frame;
 	uint sample_batch;
 };
 

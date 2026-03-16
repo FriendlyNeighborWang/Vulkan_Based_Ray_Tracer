@@ -58,9 +58,11 @@ struct Scene;
 class SkyBox;
 
 // Graphics
+class Window;
 class Renderer;
 class RenderPass;
 class FrameContext;
+class InputManager;
 class ResourceManager;
 
 // Util

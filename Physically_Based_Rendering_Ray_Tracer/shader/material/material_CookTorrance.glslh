@@ -70,43 +70,35 @@ vec3 sampleCosineHemisphere(vec3 N, inout uint rngState){
 }
 
 
+// ============== Compute F0 ==============
+vec3 computeF0(vec3 albedo, float metallic, float ior, float specularFactor, vec3 specularColor){
+	float dielectric = pow((ior - 1.0) / (ior + 1.0), 2.0);
+	vec3 F0_dielectric = specularFactor * specularColor * dielectric;
+	return mix(F0_dielectric, albedo, metallic);
+}
 
 
 
-float evaluateCookTorrancePDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metallic, float roughness, float transmission){
+
+
+
+float evaluateCookTorrancePDF(vec3 N, vec3 V, vec3 L, MaterialSample material){
 	float NdotL = dot(N, L);
 	
-	if(NdotL <= 0.0 && transmission < 1e-5){
+	if(NdotL <= 0.0 && material.transmissionFactor < 1e-5){
 		return 0.0;
 	}
 
-	roughness = max(roughness, MIN_ROUGHNESS);
-	float alpha = roughness * roughness;
-	vec3 F0 = mix(vec3(0.04), albedo, metallic);
+	material.roughness = max(material.roughness, MIN_ROUGHNESS);
+	float alpha = material.roughness * material.roughness;
+	vec3 F0 = computeF0(material.albedo, material.metallic, material.ior, material.specularFactor, material.specular);
 
 	vec3 Fr = F_Schlick(max(dot(N, V), 0.0), F0);
 	float F = max(Fr.r, max(Fr.g, Fr.b));
 
-	float W_trans_unnorm = (1.0 - F) * transmission * (1.0 - metallic);
-	float W_diff_unnorm = (1.0 - F) * (1.0 - transmission) * (1.0 - metallic);
+	float W_trans_unnorm = (1.0 - F) * material.transmissionFactor * (1.0 - material.metallic);
+	float W_diff_unnorm = (1.0 - F) * (1.0 - material.transmissionFactor) * (1.0 - material.metallic);
 	float W_total = F + W_trans_unnorm + W_diff_unnorm;
-
-	// Debug
-
-	/*if(gl_LaunchIDEXT.x==518 && gl_LaunchIDEXT.y == 414){
-		if(NdotL < 0.0 && Fr == vec3(1.0)){
-			debugPrintfEXT("F = (%.6f, %.6f, %.6f), transmission = %.6f, metallic = %.6f",
-				Fr.x, Fr.y, Fr.z, transmission,  metallic
-			);
-
-			debugPrintfEXT("dot(N, V) = %.6f",
-				dot(N, V)
-			);
-			
-		}
-	}*/
-	
-	// Debug
 
 
 	if(W_total < 1e-5) return 0.0;
@@ -115,7 +107,6 @@ float evaluateCookTorrancePDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metalli
 	float W_diff = W_diff_unnorm / W_total;
 	float W_trans = W_trans_unnorm / W_total;
 
-	float result;
 
 	if(NdotL > 0.0){
 		// Upper hemisphere: Fresnell Diffuse + Specular relfection
@@ -133,20 +124,7 @@ float evaluateCookTorrancePDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metalli
 		// Fresnell Diffuse
 		float pdfDiffuse = NdotL / PI;
 
-		// return W_spec * pdfSpecular + W_diff * pdfDiffuse;
-		result = W_spec * pdfSpecular + W_diff * pdfDiffuse;
-
-		// Debug
-		/*if(gl_LaunchIDEXT.x==518 && gl_LaunchIDEXT.y == 414){
-			if(result < 1e-5){
-				debugPrintfEXT("W_spec = %.6f, pdfSpecular = %.6f, W_diff = %.6f, pdfDiffuse = %.6f\n",
-					W_spec, pdfSpecular, W_diff, pdfDiffuse
-				);
-			}
-		}*/
-		
-		// Debug
-		
+		return W_spec * pdfSpecular + W_diff * pdfDiffuse;		
 	}else{
 		L = L - 2.0 * NdotL * N;
 
@@ -159,37 +137,22 @@ float evaluateCookTorrancePDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metalli
 
 		float pdfSpecular = D * NdotH / (4.0 * max(HdotV, 0.001));
 
-		// return W_trans * pdfSpecular;
-
-		result = W_trans * pdfSpecular;
-
-		// Debug
-		/*if(gl_LaunchIDEXT.x == 518 && gl_LaunchIDEXT.y == 414){
-			if(result < 1e-5){
-				debugPrintfEXT("W_trans_unnorm = %.6f, pdfSpecular = %.6f\n",
-					W_trans_unnorm, pdfSpecular
-				);
-			}
-		}*/
-		
-		// Debug
+		return W_trans * pdfSpecular;
 	}
-
-	return result;
 }
 
 
-vec3 sampleCookTorranceBRDF(vec3 N, vec3 V, vec3 albedo, float metallic, float roughness, float transmission, inout uint rngState){
+vec3 sampleCookTorranceBRDF(vec3 N, vec3 V, MaterialSample material, inout uint rngState){
 	vec3 L;
 
-	roughness = max(roughness, MIN_ROUGHNESS);
-	vec3 F0 = mix(vec3(0.04), albedo, metallic);
+	material.roughness = max(material.roughness, MIN_ROUGHNESS);
+	vec3 F0 = computeF0(material.albedo, material.metallic, material.ior, material.specularFactor, material.specular);
 
 	vec3 Fr = F_Schlick(max(dot(N, V), 0.0), F0);
 	float F = max(Fr.r, max(Fr.g, Fr.b));
 	
-	float W_trans_unnorm = (1.0 - F) * transmission * (1.0 - metallic);
-	float W_diff_unnorm = (1.0 - F) * (1.0 - transmission) * (1.0 - metallic);
+	float W_trans_unnorm = (1.0 - F) * material.transmissionFactor * (1.0 - material.metallic);
+	float W_diff_unnorm = (1.0 - F) * (1.0 - material.transmissionFactor) * (1.0 - material.metallic);
 	float W_total = F + W_trans_unnorm + W_diff_unnorm;
 
 	if(W_total < 1e-5) return vec3(0.0);
@@ -201,12 +164,12 @@ vec3 sampleCookTorranceBRDF(vec3 N, vec3 V, vec3 albedo, float metallic, float r
 	
 	if(prob <= F_spec){
 		// Specular
-		vec3 H = sampleGGX(N, roughness, rngState);
+		vec3 H = sampleGGX(N, material.roughness, rngState);
 		L = reflect(-V, H);
 
 	}else if(prob < F_spec + F_trans){
 		// Transmission
-		vec3 H = sampleGGX(N, roughness, rngState);
+		vec3 H = sampleGGX(N, material.roughness, rngState);
 		L = reflect(-V, H);
 		L = L - 2.0 * dot(N, L) * N;
 	}else{
@@ -217,18 +180,18 @@ vec3 sampleCookTorranceBRDF(vec3 N, vec3 V, vec3 albedo, float metallic, float r
 	return L;
 }
 
-vec3 evaluateCookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metallic, float roughness, float transmission){
+vec3 evaluateCookTorranceBRDF(vec3 N, vec3 V, vec3 L, MaterialSample material){
 	float NdotL_orginal = dot(N, L);
-	if(NdotL_orginal <= 0.0 && transmission < 1e-5){
+	if(NdotL_orginal <= 0.0 && material.transmissionFactor < 1e-5){
 		return vec3(0.0);
 	}
 
 	bool isTransmission = NdotL_orginal < 0.0;
 	L = isTransmission ? (L - 2.0 * NdotL_orginal * N) : L;
 
-	roughness = max(roughness, MIN_ROUGHNESS);
-	float alpha = roughness * roughness;
-	vec3 F0 = mix(vec3(0.04), albedo, metallic);
+	material.roughness = max(material.roughness, MIN_ROUGHNESS);
+	float alpha = material.roughness * material.roughness;
+	vec3 F0 = computeF0(material.albedo, material.metallic, material.ior, material.specularFactor, material.specular);
 
 	vec3 H = normalize(L + V);
 	float NdotV = max(dot(N, V), 0.0);
@@ -238,69 +201,24 @@ vec3 evaluateCookTorranceBRDF(vec3 N, vec3 V, vec3 L, vec3 albedo, float metalli
 
 
 	float D = D_TRGGX(NdotH, alpha);
-	float G = G_Smith(NdotV, NdotL, roughness);
+	float G = G_Smith(NdotV, NdotL, material.roughness);
 	vec3 F = F_Schlick(HdotV, F0);
 
-	vec3 kF = (vec3(1.0) - F) * (1.0 - metallic);
-
-	// Debug
-	/* if(gl_LaunchIDEXT.x==518 && gl_LaunchIDEXT.y == 414){
-		if(dot(N, V) > 0.0 && (D < 1e-5 || G < 1e-5)){
-			debugPrintfEXT("D = %.6f, G = %.6f, NdotH = %.6f, alpha = %.6f\n", D, G, NdotH, alpha
-			);
-		}
-	}*/
-	// Debug
-
-	vec3 result;
+	vec3 kF = (vec3(1.0) - F) * (1.0 - material.metallic);
 
 	if(!isTransmission){
 		vec3 specular = (D * G * F) / max(4 * NdotV * NdotL, 0.001);
-		vec3 kD = kF * (1.0 - transmission);
-		vec3 diffuse = kD * albedo / PI;
+		vec3 kD = kF * (1.0 - material.transmissionFactor);
+		vec3 diffuse = kD * material.albedo / PI;
 
 
-		// return specular + diffuse;
-		result = specular + diffuse;
-
-		// Debug
-		/*if(gl_LaunchIDEXT.x==518 && gl_LaunchIDEXT.y == 414){
-			if(dot(N,V) > 0.0  && length(result - vec3(0.0)) < 1e-5 )
-
-				debugPrintfEXT("!Transmission\nspecular is (%.4f, %.4f, %.4f)\ndiffuse is (%.4f, %.4f, %.4f)\n", 
-					specular.x, specular.y, specular.z,
-					diffuse.x, diffuse.y, diffuse.z
-				);
-		}*/
-		// Debug
-
-		
+		return specular + diffuse;
 	}else{
-		vec3 kT = kF * transmission;
+		vec3 kT = kF * material.transmissionFactor;
 
-		// Debug
-		/*if(gl_LaunchIDEXT.x==518 && gl_LaunchIDEXT.y == 414){
-			if(dot(N,V) > 0.0 && ((G == 0.0) || (D == 0.0))){
-				debugPrintfEXT("Transmission\nF is (%.4f, %.4f, %.4f)\nG = %.4f\nD = %.4f\ntransmission = %.4f\n", 
-					F.x, F.y, F.z,
-					G, D, transmission
-				);
-			}
-
-		}*/
-		// Debug
-
-		// return kT * albedo * (D * G) / max(4 * dot(N, L) * NdotV, 0.001);
-		result = kT * albedo * (D * G) / max(4 * dot(N, L) * NdotV, 0.001);
+		return kT * material.albedo * (D * G) / max(4 * dot(N, L) * NdotV, 0.001);
 	}
 	
-	/*if(gl_LaunchIDEXT.x==518 && gl_LaunchIDEXT.y == 414){
-		if(dot(N, V) > 0.0 && length(result - vec3(0.0)) < 1e-5){
-			debugPrintfEXT("G = %.4f\nD = %.4f\n", G, D);
-		}
-	}*/
-	
-	return result;
 }
 
 

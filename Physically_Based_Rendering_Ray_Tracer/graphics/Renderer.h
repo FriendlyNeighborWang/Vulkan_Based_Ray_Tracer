@@ -3,7 +3,7 @@
 
 #include "base/base.h"
 #include "util/Timer.h"
-#include "CameraController.h"
+#include "InputManager.h"
 #include "Window.h"
 
 #include <unordered_map>
@@ -50,10 +50,11 @@ private:
 	Context& _context;
 
 	// Else
-	CameraController cameraController;
+	InputManager inputManager;
 	TimerManager timerManager;
 
 	uint32_t currentFrame = 0;
+	uint32_t frame_idx = 0;
 };
 
 

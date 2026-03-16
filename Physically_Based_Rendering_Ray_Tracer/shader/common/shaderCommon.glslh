@@ -42,18 +42,23 @@ struct Material{
     uint materialType;
 	vec3 emission;
 	vec4 albedo;
+	vec3 specular;
 	float metallic;
 	float roughness;
 	float transmissionFactor;
+	float specularFactor;
+	float ior;
 	int emissiveTexture;
 	int albedoTexture;
 	int metallicRoughnessTexture;
 	int normalTexture;
 	int transmissionTexture;
+	int specularTexture;
+	int specularColorTexture;
 	uint alphaMode;
 	float alphaCutoff;
 	uint doublesided;
-	uint _padding;
+	vec2 _padding;
 };
 
 struct MaterialSample{
@@ -63,6 +68,9 @@ struct MaterialSample{
 	float metallic;
 	float roughness;
 	float transmissionFactor;
+	float ior;
+	float specularFactor;
+	vec3 specular;
 };
 
 

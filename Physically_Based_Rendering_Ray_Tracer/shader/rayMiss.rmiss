@@ -75,7 +75,6 @@ void main(){
 		}
 	}
 	
-	
 
 	pld.radiance += pld.throughput * skyColor;
 	pld.ifStop = true;

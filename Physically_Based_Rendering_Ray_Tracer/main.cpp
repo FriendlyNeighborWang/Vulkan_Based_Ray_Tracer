@@ -106,13 +106,16 @@ int main() {
 
 	// Load Scene
 	SceneLoader& sceneLoader = SceneLoader::Get();
-	Scene scene = sceneLoader.LoadScene("resource/Sponza/Sponza.gltf");
+	// Scene scene = sceneLoader.LoadScene("resource/Sponza/Sponza.gltf");
 	// Scene scene = sceneLoader.LoadScene("resource/Sponza_with_light/Sponza.gltf");
 	// Scene scene = sceneLoader.LoadScene("resource/cornell_box/scene.gltf");
 	// Scene scene = sceneLoader.LoadScene("resource/TransmissionTest/glTF/TransmissionTest.gltf");
+	// Scene scene = sceneLoader.LoadScene("resource/San_miguel/San_miguel.gltf");
+	Scene scene = sceneLoader.LoadScene("resource/Living_room/Living_room.gltf");
 
-	SkyBox skybox("./resource/skybox/citrus_orchard_road_puresky_4k.hdr");
-	// SkyBox skybox();
+
+	// SkyBox skybox("./resource/skybox/qwantani_morning_puresky_4k.hdr");
+	SkyBox skybox;
 
 	// Create Renderer
 	Renderer renderer(context, window, swapchain, scene);

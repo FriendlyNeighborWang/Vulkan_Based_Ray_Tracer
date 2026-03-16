@@ -55,6 +55,12 @@
     <Filter Include="resource\transimission test">
       <UniqueIdentifier>{5679e526-cc15-49b8-9ccc-450eaf3f054e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="resource\san-miguel">
+      <UniqueIdentifier>{e046c55d-1cb6-434c-902a-18bd3d517057}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resource\Living room">
+      <UniqueIdentifier>{38e32548-c5ca-4b72-a5e3-6620defd82ae}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="util\memory.h">
@@ -141,9 +147,6 @@
     <ClInclude Include="vk_layer\Texture.h">
       <Filter>vk_layer</Filter>
     </ClInclude>
-    <ClInclude Include="graphics\CameraController.h">
-      <Filter>graphics</Filter>
-    </ClInclude>
     <ClInclude Include="graphics\SkyBox.h">
       <Filter>graphics</Filter>
     </ClInclude>
@@ -169,6 +172,9 @@
       <Filter>vk_layer</Filter>
     </ClInclude>
     <ClInclude Include="graphics\FrameContext.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\InputManager.h">
       <Filter>graphics</Filter>
     </ClInclude>
   </ItemGroup>
@@ -246,6 +252,9 @@
     <ClCompile Include="vk_layer\PipelineManager.cpp">
       <Filter>vk_layer</Filter>
     </ClCompile>
+    <ClCompile Include="graphics\InputManager.cpp">
+      <Filter>graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="util\Vec.inl">
@@ -292,6 +301,12 @@
     </None>
     <None Include="resource\TransmissionTest\glTF\TransmissionTest.gltf">
       <Filter>resource\transimission test</Filter>
+    </None>
+    <None Include="resource\San_miguel\San_miguel.gltf">
+      <Filter>resource\san-miguel</Filter>
+    </None>
+    <None Include="resource\Living_room\Living_room.gltf">
+      <Filter>resource\Living room</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

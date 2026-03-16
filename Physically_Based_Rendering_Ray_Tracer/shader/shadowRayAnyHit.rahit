@@ -11,22 +11,28 @@ void main(){
 	GeometryStruct geo = geometries[geoIdx];
 	Material mat = materials[geo.materialIdx];
 
-	// Alpha Test
+	
+	// Alpha Test & Alpha Blend
 	if(mat.doublesided == 0 && gl_HitKindEXT == gl_HitKindBackFacingTriangleEXT)
 		ignoreIntersectionEXT;
 
-	vec2 uv = getUV(geo);
-	if(mat.alphaMode == ALPHA_MODE_MASK){
-		float alpha = mat.albedo.a;
-		if(mat.albedoTexture >= 0){
-			alpha *= texture(textures[nonuniformEXT(mat.albedoTexture)], uv).a;
-		}
+	if(mat.alphaMode == ALPHA_MODE_OPAQUE) return;
 
-		if(alpha < mat.alphaCutoff)
-			ignoreIntersectionEXT;
+	vec2 uv = getUV(geo);
+
+	float alpha = mat.albedo.a;
+	if(mat.albedoTexture >= 0){
+		alpha *= texture(textures[nonuniformEXT(mat.albedoTexture)], uv).a;
 	}
 
 	
+	if(mat.alphaMode == ALPHA_MODE_MASK){
+		if(alpha < mat.alphaCutoff)
+			ignoreIntersectionEXT;
+	}else{
+		srd.throughput *= 1.0 - alpha;
+		ignoreIntersectionEXT;
+	}
 	
 
 	// Considering transimission affection

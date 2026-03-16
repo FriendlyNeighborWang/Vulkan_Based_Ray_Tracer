@@ -14,20 +14,22 @@ void main(){
 	if(mat.doublesided == 0 && gl_HitKindEXT == gl_HitKindBackFacingTriangleEXT)
 		ignoreIntersectionEXT;
 
-	if(mat.alphaMode != ALPHA_MODE_MASK) return;
+	if(mat.alphaMode == ALPHA_MODE_OPAQUE) return;
 
 	vec2 uv = getUV(geo);
 
 	float alpha = mat.albedo.a;
-
-
 	if(mat.albedoTexture >= 0){
-
 		alpha *= texture(textures[nonuniformEXT(mat.albedoTexture)], uv).a;
 	}
 
-	if(alpha < mat.alphaCutoff)
-		ignoreIntersectionEXT;
-
+	
+	if(mat.alphaMode == ALPHA_MODE_MASK){
+		if(alpha < mat.alphaCutoff)
+			ignoreIntersectionEXT;
+	}else{
+		if(alpha < stepAndOutputRNGFloat(pld.rngState))
+			ignoreIntersectionEXT;
+	}
 
 }
