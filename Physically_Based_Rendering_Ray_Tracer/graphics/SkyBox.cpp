@@ -8,6 +8,32 @@
 
 SkyBox::SkyBox(): if_use(false){}
 
+SkyBox::SkyBox(SkyBox&& other) noexcept
+	: hdrData(std::move(other.hdrData))
+	, conditionalCdf(std::move(other.conditionalCdf))
+	, marginalCdf(std::move(other.marginalCdf))
+	, _width(other._width)
+	, _height(other._height)
+	, _channels(other._channels)
+	, textures(std::move(other.textures))
+	, samplers(std::move(other.samplers))
+	, if_use(other.if_use){}
+
+SkyBox& SkyBox::operator=(SkyBox&& other) noexcept {
+	if (this != &other) {
+		hdrData = std::move(other.hdrData);
+		conditionalCdf = std::move(other.conditionalCdf);
+		marginalCdf = std::move(other.marginalCdf);
+		_width = other._width;
+		_height = other._height;
+		_channels = other._channels;
+		textures = std::move(other.textures);
+		samplers = std::move(other.samplers);
+		if_use = other.if_use;
+	}
+	return *this;
+}
+
 
 SkyBox::SkyBox(const std::string& filePath): if_use(true) {
 	const float PI = 3.1415926535f;
@@ -87,7 +113,6 @@ SkyBox::SkyBox(const std::string& filePath): if_use(true) {
 	for (uint32_t y = 0; y < h; ++y) {
 		totalWeight += rowWeightMap[y];
 	}
-	totalPower = totalWeight;
 	marginalCdf.resize(h);
 
 

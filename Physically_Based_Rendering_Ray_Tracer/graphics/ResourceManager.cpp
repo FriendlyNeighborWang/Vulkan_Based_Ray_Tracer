@@ -1,6 +1,5 @@
 #include "ResourceManager.h"
 
-#include "RenderPass.h"
 #include "vk_layer/Image.h"
 #include "vk_layer/Buffer.h"
 #include "vk_layer/Context.h"
@@ -30,38 +29,61 @@ void ResourceManager::register_resources(Buffer&& buffer, std::string binding_na
 		// Add pipeline ID
 		pipeline_ids.insert(pipeline->get_id());
 
-		// Create descriptor layout & Add binding 
-		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id());
-		std::string set_name = rf_flag_to_string(set_flag);
-		uint32_t set_num = (set_flag & RF_PER_FRAME) ? MAX_FRAMES_IN_FLIGHT : 1;
+		// Descriptor Set
+		if (flags & RF_BIND_DESCRIPTOR) {
+			// Create descriptor layout & Add binding 
+			ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id()) | RF_BIND_DESCRIPTOR;
+			std::string set_name = rf_flag_to_string(set_flag);
+			uint32_t set_num = (set_flag & RF_PER_FRAME) ? MAX_FRAMES_IN_FLIGHT : 1;
 
-		if (layouts.find(set_flag) == layouts.end()) {
-			layouts.insert({ set_flag, &_context.descriptorManager().create_null_descriptor_set_layout(set_name, set_num) });
+			if (layouts.find(set_flag) == layouts.end()) {
+				layouts.insert({ set_flag, &_context.descriptorManager().create_null_descriptor_set_layout(set_name, set_num) });
 
-			layout_binding_lists.insert({ set_flag, pstd::vector<std::string>()});
+				layout_binding_lists.insert({ set_flag, pstd::vector<std::string>() });
+			}
+
+			uint32_t binding = static_cast<uint32_t>(layout_binding_lists[set_flag].size());
+			VkShaderStageFlags real_stages = stages & pipeline->supported_shader_stages();
+			layouts[set_flag]->add_binding(binding, descriptorType, real_stages, 1);
+
+			// Push in binding_list, for later header file generation
+			layout_binding_lists[set_flag].push_back(set_name + "_" + binding_name);
+
+
+			// Record resource handle
+			DescriptorHandle descriptor;
+			descriptor.flags = set_flag;
+			descriptor.binding = binding;
+			descriptor.idx = 0;
+			descriptor.type = descriptorType;
+			descriptor.ptr = &buffers.back();
+
+			descriptors.push_back(descriptor);
+
+			// Check if resource is "window size related"
+			if (flags & RF_WINDOW_SIZE_RELATED)
+				window_size_related_resources_caches.push_back(descriptor);
 		}
 
-		uint32_t binding = static_cast<uint32_t>(layout_binding_lists[set_flag].size());
-		VkShaderStageFlags real_stages = stages & pipeline->supported_shader_stages();
-		layouts[set_flag]->add_binding(binding, descriptorType, real_stages, 1);
+		if (flags & RF_BIND_VERTEX) {
+			VkVertexInputBindingDescription binding{};
+			binding.binding = static_cast<uint32_t>(vertexInputBindings.size());
+			binding.stride = buffers.back().stride;
+			binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		// Push in binding_list£¬for later header file generation
-		layout_binding_lists[set_flag].push_back(set_name + "_" + binding_name);
+			VkVertexInputAttributeDescription attribute{};
+			attribute.location = static_cast<uint32_t>(vertexInputAttributes.size());
+			attribute.binding = binding.binding;
+			attribute.format = buffers.back().format;
+			attribute.offset = 0;
 
+			vertexInputBindings.push_back(binding);
+			vertexInputAttributes.push_back(attribute);
 
-		// Record resource handle
-		DescriptorHandle descriptor;
-		descriptor.flags = set_flag;
-		descriptor.binding = binding;
-		descriptor.idx = 0;
-		descriptor.type = descriptorType;
-		descriptor.ptr = &buffers.back();
+			vertex_input_list.push_back(binding_name);
+		}
 
-		descriptors.push_back(descriptor);
-
-		// Check if resource is "window size related"
-		if (flags & RF_WINDOW_SIZE_RELATED)
-			window_size_related_resources_caches.push_back(descriptor);
+		
 	}
 	
 }
@@ -85,7 +107,7 @@ void ResourceManager::register_resources(Image&& image, std::string binding_name
 		pipeline_ids.insert(pipeline->get_id());
 
 		// Create descriptor layout & Add binding 
-		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id());
+		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id()) | RF_BIND_DESCRIPTOR;
 		std::string set_name = rf_flag_to_string(set_flag);
 		uint32_t set_num = (set_flag & RF_PER_FRAME) ? MAX_FRAMES_IN_FLIGHT : 1;
 
@@ -130,7 +152,7 @@ void ResourceManager::register_resources(TLAS&& tlas, std::string binding_name, 
 		pipeline_ids.insert(pipeline->get_id());
 
 		// Create descriptor layout & Add binding 
-		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id());
+		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id()) | RF_BIND_DESCRIPTOR;
 		std::string set_name = rf_flag_to_string(set_flag);
 		uint32_t set_num = (set_flag & RF_PER_FRAME) ? MAX_FRAMES_IN_FLIGHT : 1;
 
@@ -172,7 +194,7 @@ void ResourceManager::register_resources(pstd::vector<Texture>&& textures, pstd:
 		pipeline_ids.insert(pipeline->get_id());
 
 		// Create descriptor layout & Add binding 
-		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id());
+		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id()) | RF_BIND_DESCRIPTOR;
 		std::string set_name = rf_flag_to_string(set_flag);
 		uint32_t set_num = (set_flag & RF_PER_FRAME) ? MAX_FRAMES_IN_FLIGHT : 1;
 
@@ -231,7 +253,7 @@ void ResourceManager::register_resources(VkExtent2D extent, VkFormat format, VkI
 		// Add pipeline ID
 		pipeline_ids.insert(pipeline->get_id());
 
-		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id());
+		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id()) | RF_BIND_DESCRIPTOR;
 		std::string set_name = rf_flag_to_string(set_flag);
 		uint32_t set_num = (set_flag & RF_PER_FRAME) ? MAX_FRAMES_IN_FLIGHT : 1;
 
@@ -267,12 +289,12 @@ void ResourceManager::register_resources(VkExtent2D extent, VkFormat format, VkI
 }
 
 // For creating Buffer inside the function
-void ResourceManager::register_resources(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, std::string binding_name, ResourceFlag flags, const pstd::vector<Pipeline*>& pipelines, VkDescriptorType descriptorType, VkShaderStageFlags stages) {
+void ResourceManager::register_resources(VkDeviceSize size, VkDeviceSize stride, VkFormat format, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, std::string binding_name, ResourceFlag flags, const pstd::vector<Pipeline*>& pipelines, VkDescriptorType descriptorType, VkShaderStageFlags stages) {
 	uint32_t resourceCount = (flags & RF_PER_FRAME) ? MAX_FRAMES_IN_FLIGHT : 1;
 
 	pstd::vector<Buffer*> bufferPtrs;
 	for (uint32_t i = 0; i < resourceCount; ++i) {
-		buffers.push_back(_context.memAllocator().create_buffer(size, usage, properties));
+		buffers.push_back(_context.memAllocator().create_buffer(size, stride, format, usage, properties));
 
 		Buffer* ptr = &buffers.back();
 		bufferPtrs.push_back(ptr);
@@ -287,36 +309,56 @@ void ResourceManager::register_resources(VkDeviceSize size, VkBufferUsageFlags u
 		// Add pipeline ID
 		pipeline_ids.insert(pipeline->get_id());
 
-		ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id());
-		std::string set_name = rf_flag_to_string(set_flag);
-		uint32_t set_num = (set_flag & RF_PER_FRAME) ? MAX_FRAMES_IN_FLIGHT : 1;
+		if (flags & RF_BIND_DESCRIPTOR) {
+			ResourceFlag set_flag = rf_get_frequency(flags) | rf_get_pipeline(pipeline->get_id()) | RF_BIND_DESCRIPTOR;
+			std::string set_name = rf_flag_to_string(set_flag);
+			uint32_t set_num = (set_flag & RF_PER_FRAME) ? MAX_FRAMES_IN_FLIGHT : 1;
 
-		if (layouts.find(set_flag) == layouts.end()) {
-			layouts.insert({ set_flag, &_context.descriptorManager().create_null_descriptor_set_layout(set_name, set_num) });
+			if (layouts.find(set_flag) == layouts.end()) {
+				layouts.insert({ set_flag, &_context.descriptorManager().create_null_descriptor_set_layout(set_name, set_num) });
 
-			layout_binding_lists.insert({ set_flag, pstd::vector<std::string>() });
+				layout_binding_lists.insert({ set_flag, pstd::vector<std::string>() });
+			}
+
+			uint32_t binding = static_cast<uint32_t>(layout_binding_lists[set_flag].size());
+			VkShaderStageFlags real_stages = stages & pipeline->supported_shader_stages();
+			layouts[set_flag]->add_binding(binding, descriptorType, real_stages, 1);
+
+			// Push in binding_list£¬for later header file generation
+			layout_binding_lists[set_flag].push_back(set_name + "_" + binding_name);
+
+			for (uint32_t i = 0; i < resourceCount; ++i) {
+				DescriptorHandle descriptor;
+				descriptor.flags = set_flag;
+				descriptor.binding = binding;
+				descriptor.idx = i;
+				descriptor.type = descriptorType;
+				descriptor.ptr = bufferPtrs[i];
+
+				descriptors.push_back(descriptor);
+
+				// Check if resource is "window size related"
+				if (flags & RF_WINDOW_SIZE_RELATED)
+					window_size_related_resources_caches.push_back(descriptor);
+			}
 		}
 
-		uint32_t binding = static_cast<uint32_t>(layout_binding_lists[set_flag].size());
-		VkShaderStageFlags real_stages = stages & pipeline->supported_shader_stages();
-		layouts[set_flag]->add_binding(binding, descriptorType, real_stages, 1);
+		if (flags & RF_BIND_VERTEX) {
+			VkVertexInputBindingDescription binding{};
+			binding.binding = static_cast<uint32_t>(vertexInputBindings.size());
+			binding.stride = buffers.back().stride;
+			binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		// Push in binding_list£¬for later header file generation
-		layout_binding_lists[set_flag].push_back(set_name + "_" + binding_name);
+			VkVertexInputAttributeDescription attribute{};
+			attribute.location = static_cast<uint32_t>(vertexInputAttributes.size());
+			attribute.binding = binding.binding;
+			attribute.format = buffers.back().format;
+			attribute.offset = 0;
 
-		for (uint32_t i = 0; i < resourceCount; ++i) {
-			DescriptorHandle descriptor;
-			descriptor.flags = set_flag;
-			descriptor.binding = binding;
-			descriptor.idx = i;
-			descriptor.type = descriptorType;
-			descriptor.ptr = bufferPtrs[i];
+			vertexInputBindings.push_back(binding);
+			vertexInputAttributes.push_back(attribute);
 
-			descriptors.push_back(descriptor);
-
-			// Check if resource is "window size related"
-			if (flags & RF_WINDOW_SIZE_RELATED)
-				window_size_related_resources_caches.push_back(descriptor);
+			vertex_input_list.push_back(binding_name);
 		}
 	}
 }
@@ -351,11 +393,11 @@ void ResourceManager::build(const std::string& header_file_name) {
 		auto& pipeline = _context.pipelineManager().get(pipeline_id);
 		pstd::vector<VkDescriptorSetLayout> tmp_layouts;
 
-		ResourceFlag per_frame_layout_key = rf_get_frequency(RF_PER_FRAME) | rf_get_pipeline(pipeline_id);
+		ResourceFlag per_frame_layout_key = rf_get_frequency(RF_PER_FRAME) | rf_get_pipeline(pipeline_id) | RF_BIND_DESCRIPTOR;
 		if (auto It = layouts.find(per_frame_layout_key); It != layouts.end())
 			tmp_layouts.push_back(*It->second);
 
-		ResourceFlag static_layout_key = rf_get_frequency(RF_STATIC) | rf_get_pipeline(pipeline_id);
+		ResourceFlag static_layout_key = rf_get_frequency(RF_STATIC) | rf_get_pipeline(pipeline_id) | RF_BIND_DESCRIPTOR;
 		if (auto It = layouts.find(static_layout_key); It != layouts.end())
 			tmp_layouts.push_back(*It->second);
 
@@ -448,8 +490,8 @@ void ResourceManager::rebuild_window_size_related_resources(VkExtent2D extent) {
 }
 
 pstd::vector<VkDescriptorSet> ResourceManager::get_descriptor_sets(uint32_t pipeline_id, uint32_t frame_idx) {
-	std::string static_set_name = rf_flag_to_string(rf_get_frequency(RF_STATIC) | rf_get_pipeline(pipeline_id));
-	std::string dynamic_set_name = rf_flag_to_string(rf_get_frequency(RF_PER_FRAME) | rf_get_pipeline(pipeline_id));
+	std::string static_set_name = rf_flag_to_string(rf_get_frequency(RF_STATIC) | rf_get_pipeline(pipeline_id) | RF_BIND_DESCRIPTOR) ;
+	std::string dynamic_set_name = rf_flag_to_string(rf_get_frequency(RF_PER_FRAME) | rf_get_pipeline(pipeline_id) | RF_BIND_DESCRIPTOR);
 	if (MAX_FRAMES_IN_FLIGHT > 1)dynamic_set_name += std::to_string(frame_idx);
 
 	pstd::vector<VkDescriptorSet> pipeline_sets;
@@ -461,6 +503,13 @@ pstd::vector<VkDescriptorSet> ResourceManager::get_descriptor_sets(uint32_t pipe
 	return pipeline_sets;
 }
 
+const pstd::vector<VkVertexInputBindingDescription>& ResourceManager::get_vertex_input_binding() {
+	return vertexInputBindings;
+}
+
+const pstd::vector< VkVertexInputAttributeDescription>& ResourceManager::get_vertex_input_attribute() {
+	return vertexInputAttributes;
+}
 
 
 std::string ResourceManager::rf_flag_to_string(ResourceFlag flags) {
@@ -470,6 +519,10 @@ std::string ResourceManager::rf_flag_to_string(ResourceFlag flags) {
 	uint32_t pipeline_id = static_cast<uint32_t>(flags >> 32);
 	result += _context.pipelineManager().get(pipeline_id).get_name();
 
+	if (flags & RF_BIND_VERTEX) result += "_VERTEX";
+	else result += "_DESCRIPTOR_SET";
+
+
 	if (flags & RF_PER_FRAME) result += "_DYNAMIC";
 	else if (flags & RF_STATIC) result += "_STATIC";
 
@@ -477,6 +530,9 @@ std::string ResourceManager::rf_flag_to_string(ResourceFlag flags) {
 }
 
 ResourceFlag ResourceManager::rf_get_frequency(ResourceFlag flags) { return flags & RF_FREQUENCY_MASK; }
+
+ResourceFlag ResourceManager::rf_get_bind_point(ResourceFlag flags) { return flags & RF_BINDPOINT_MASK; }
+
 ResourceFlag ResourceManager::rf_get_pipeline(uint32_t pipeline_id) {
 	ResourceFlag flag = static_cast<ResourceFlag>(pipeline_id);
 	flag <<= 32;
@@ -493,12 +549,13 @@ void ResourceManager::generate_header(const std::string& filename) {
 	out << "#ifndef GENERATED_DESCRIPTOR_BINDINGS_H\n";
 	out << "#define GENERATED_DESCRIPTOR_BINDINGS_H\n\n";
 
+	// Descriptor Set
 	pstd::vector<ResourceFlag> fr_flags{ RF_PER_FRAME, RF_STATIC };
 
 	for (const auto& pipeline_id : pipeline_ids) {
 		uint32_t set_count = 0;
 		for (const auto& fr_flag : fr_flags) {
-			ResourceFlag flag = rf_get_frequency(fr_flag) | rf_get_pipeline(pipeline_id);
+			ResourceFlag flag = rf_get_frequency(fr_flag) | rf_get_pipeline(pipeline_id) | RF_BIND_DESCRIPTOR;
 
 			auto It = layout_binding_lists.find(flag);
 			if (It == layout_binding_lists.end()) continue;
@@ -520,6 +577,22 @@ void ResourceManager::generate_header(const std::string& filename) {
 			set_count++;
 			out << "\n\n";
 		}
+	}
+
+	// Vertex Input
+	if (!vertex_input_list.empty()) {
+		out << "// Vertex Input\n";
+
+		for (size_t i = 0; i < vertex_input_list.size(); ++i) {
+			const auto& name = vertex_input_list[i];
+			std::string macro_name = "VERTEX_LOCATION_" + name;
+			for (auto& c : macro_name) {
+				if (c == ' ')c = '_';
+				else c = static_cast<char>(std::toupper(c));
+			}
+			out << "#define " << macro_name << " " << i << "\n";
+		}
+		out << "\n\n";
 	}
 
 	out << "#endif // GENERATED_DESCRIPTOR_BINDINGS_H\n";

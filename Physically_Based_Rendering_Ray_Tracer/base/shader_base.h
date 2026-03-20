@@ -36,7 +36,6 @@ struct ToneMappingPushConstants {
 #define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_POINT 2
 #define LIGHT_TYPE_SPOT 3
-#define LIGHT_TYPE_SKYBOX 4
 
 
 // Alpha Mode

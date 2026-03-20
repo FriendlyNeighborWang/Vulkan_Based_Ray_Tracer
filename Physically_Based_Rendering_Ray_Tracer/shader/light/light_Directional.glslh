@@ -8,7 +8,7 @@ float evaluateDirectionalLightPDF(){
 	return 1.0f;
 }
 
-// return Direction
+// Return Direction
 vec3 sampleDirectionalLight(uint lightIdx){
 	Light light = lights[lightIdx];
 

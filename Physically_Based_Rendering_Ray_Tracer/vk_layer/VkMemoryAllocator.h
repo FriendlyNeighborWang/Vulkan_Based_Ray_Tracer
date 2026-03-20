@@ -23,7 +23,7 @@ public:
 	pstd::vector<Texture> create_textures(const pstd::vector<TextureData>& infos, pstd::vector<Sampler>& samplers);
 
 
-	Buffer create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) const ;
+	Buffer create_buffer(VkDeviceSize size, VkDeviceSize stride, VkFormat format, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) const ;
 
 	// From Host to Device (with Memory map)
 	void copy_to_buffer(const void* data, VkDeviceSize size, Buffer& dstBuffer, bool keep_mapping = false) const;

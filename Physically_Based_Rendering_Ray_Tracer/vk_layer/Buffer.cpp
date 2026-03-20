@@ -1,8 +1,8 @@
 #include "Buffer.h"
 
-Buffer::Buffer(VkDevice device, VkDeviceMemory memory, VkBuffer buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties): _device(device),_memory(memory),_buffer(buffer), size(size), usage(usage), memoryProperties(memoryProperties){}
+Buffer::Buffer(VkDevice device, VkDeviceMemory memory, VkBuffer buffer, VkDeviceSize size, VkDeviceSize stride, VkFormat format, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties): _device(device),_memory(memory),_buffer(buffer), size(size), stride(stride), format(format), usage(usage), memoryProperties(memoryProperties){}
 
-Buffer::Buffer(Buffer&& other) noexcept :_device(other._device), _memory(other._memory), _buffer(other._buffer), size(other.size), usage(other.usage), memoryProperties(other.memoryProperties), map_address(other.map_address) {
+Buffer::Buffer(Buffer&& other) noexcept :_device(other._device), _memory(other._memory), _buffer(other._buffer), size(other.size), stride(other.stride), format(other.format), usage(other.usage), memoryProperties(other.memoryProperties), map_address(other.map_address) {
 	other._memory = VK_NULL_HANDLE;
 	other._buffer = VK_NULL_HANDLE;
 	other._device = VK_NULL_HANDLE;
@@ -20,6 +20,8 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept {
 	_memory = other._memory;
 	_buffer = other._buffer;
 	size = other.size;
+	stride = other.stride;
+	format = other.format;
 	map_address = other.map_address;
 	usage = other.usage;
 	memoryProperties = other.memoryProperties;

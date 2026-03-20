@@ -60,7 +60,6 @@ class SkyBox;
 // Graphics
 class Window;
 class Renderer;
-class RenderPass;
 class FrameContext;
 class InputManager;
 class ResourceManager;
@@ -89,6 +88,7 @@ class ShaderModule;
 class Pipeline;
 class RTPipeline;
 class ComputePipeline;
+class GraphicsPipeline;
 class PipelineManager;
 class Fence;
 class Semaphore;
@@ -96,17 +96,21 @@ class Semaphore;
 // --------------------Resource Flag--------------------
 using ResourceFlag = uint64_t;
 
-// Update Frequency [bit 0:15]
-constexpr ResourceFlag RF_STATIC = 0x0000'0000'0000'0001ULL;
-constexpr ResourceFlag RF_PER_FRAME = 0x0000'0000'0000'0002ULL;
+// [bit 0:3] Update Frequency (hex digit 0)
+constexpr ResourceFlag RF_STATIC = 0x1ULL;
+constexpr ResourceFlag RF_PER_FRAME = 0x2ULL;
 
+// [bit 4:7] Bind Point (hex digit 1)
+constexpr ResourceFlag RF_BIND_DESCRIPTOR = 0x10ULL;
+constexpr ResourceFlag RF_BIND_VERTEX = 0x20ULL;
 
-// Other Flag [bit 16: 31]
-constexpr ResourceFlag RF_WINDOW_SIZE_RELATED = 0x0000'0000'0001'0000ULL;
+// [bit 8:11] Property (hex digit 2)
+constexpr ResourceFlag RF_WINDOW_SIZE_RELATED = 0x100ULL;
 
 // Mask
-constexpr ResourceFlag RF_FREQUENCY_MASK = 0x0000'0000'0000'000FULL;
-
+constexpr ResourceFlag RF_FREQUENCY_MASK = 0x000FULL;
+constexpr ResourceFlag RF_BINDPOINT_MASK = 0x00F0ULL;
+constexpr ResourceFlag RF_PROPERTY_MASK = 0x0F00ULL;
 
 #endif // !PBRT_BASE
 

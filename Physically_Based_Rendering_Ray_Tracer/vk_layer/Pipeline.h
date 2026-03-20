@@ -115,6 +115,45 @@ public:
 };
 
 
+class GraphicsPipeline : public Pipeline {
+public:
+	GraphicsPipeline(Context& context, const std::string& name);
+	GraphicsPipeline(GraphicsPipeline&& other) noexcept;
+	GraphicsPipeline& operator=(GraphicsPipeline&& other) noexcept;
+
+	// Shader
+	void register_vertex_shader(const std::string& path);
+	void register_fragment_shader(const std::string& path);
+
+	// Vertex Input
+	void register_vertex_input(const pstd::vector<VkVertexInputBindingDescription> bindings, const pstd::vector<VkVertexInputAttributeDescription>& attributes);
+
+	// Rasterization Setting
+	void set_rasterization_cull_mode(VkCullModeFlags mode) { cull_mode = mode; }
+
+	void register_color_attachment(VkFormat format, VkColorComponentFlags colorWriteMask, VkBool32 blendEnable);
+	void register_depth_stencil_attachment(VkFormat format);
+
+	virtual VkShaderStageFlags supported_shader_stages() const;
+
+	virtual void build(Context&, uint32_t push_constant_size) override;
+	
+private:
+	// enum class ShaderType { VERTEX, TESSELATION_CONTROL, TESSELATION_EVALUATION, GEOMETRY, FRAGMENT };
+
+	pstd::vector<VkPipelineShaderStageCreateInfo> stages;
+
+	pstd::vector<VkVertexInputBindingDescription> vertexInputBindings;
+	pstd::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
+
+	pstd::vector<VkPipelineColorBlendAttachmentState> colorAttachments;
+	pstd::vector<VkFormat> colorAttachmentsFormats;
+	pstd::vector<VkFormat> depthAttachmentFormat;
+	pstd::vector<VkFormat> stencilAttachmentFormat;
+
+	VkCullModeFlags cull_mode = VK_CULL_MODE_NONE;
+};
+
 
 #endif // !VULKAN_PIPELINE
 

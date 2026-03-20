@@ -377,6 +377,8 @@ void Renderer::offline_render(const std::string& name) {
 
 	Buffer readableBuffer = _context.memAllocator().create_buffer(
 		renderTarget.extent.width * renderTarget.extent.height * 4 * sizeof(float),
+		0,
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	);

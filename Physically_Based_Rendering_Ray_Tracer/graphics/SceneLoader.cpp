@@ -411,19 +411,19 @@ void SceneLoader::loadPunctualLights(Scene& scene) {
 			if (gltfLight.type == "directional") {
 				light.lightType = LIGHT_TYPE_DIRECTIONAL;
 				light.ifDelta = 1;
-				light.power = 1.0f;
+				light.power = computeLightPower(light);
 			}
 			else if (gltfLight.type == "point") {
 				light.lightType = LIGHT_TYPE_POINT;
 				light.ifDelta = 1;
-				light.power = intensity;
+				light.power = computeLightPower(light);
 			}
 			else if (gltfLight.type == "spot") {
 				light.lightType = LIGHT_TYPE_SPOT;
 				light.ifDelta = 1;
 				light.innerConeAngle = static_cast<float>(gltfLight.spot.innerConeAngle);
 				light.outerConeAngle = static_cast<float>(gltfLight.spot.outerConeAngle);
-				light.power = intensity;
+				light.power = computeLightPower(light);
 			}
 			else {
 				continue;
@@ -678,5 +678,20 @@ float SceneLoader::computeLightPower(const Light& light) const {
 
 	float luminance = 0.2126 * light.emission.x() + 0.7152 * light.emission.y() + 0.0722 * light.emission.z();
 
-	return light.area * PI * luminance;
+	switch (light.lightType) {
+	case LIGHT_TYPE_MESH:
+		return std::max(light.area * PI * luminance, 0.001f);
+	case LIGHT_TYPE_DIRECTIONAL:
+		return std::max(PI * luminance, 0.001f);
+	case LIGHT_TYPE_POINT:
+		return std::max(4.0f * PI * luminance, 0.001f);
+	case LIGHT_TYPE_SPOT: {
+		float solidAngle = 2.0f * PI * (1.0f - std::cos(light.outerConeAngle));
+		return std::max(solidAngle * luminance, 0.001f);
+	}
+	default:
+		return 0.001f;
+	}
+
+	
 }

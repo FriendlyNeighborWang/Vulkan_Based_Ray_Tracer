@@ -22,11 +22,14 @@ public:
 	operator const VkBuffer& () const { return _buffer; }
 	bool is_aval() const { return _buffer != VK_NULL_HANDLE; }
 
+
 	VkDeviceSize size;
+	VkDeviceSize stride;
+	VkFormat format;
 	VkBufferUsageFlags usage;
 	VkMemoryPropertyFlags memoryProperties;
 private:
-	Buffer(VkDevice device, VkDeviceMemory memory, VkBuffer buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
+	Buffer(VkDevice device, VkDeviceMemory memory, VkBuffer buffer, VkDeviceSize size, VkDeviceSize stride, VkFormat format, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
 
 
 	void* map_address = nullptr;

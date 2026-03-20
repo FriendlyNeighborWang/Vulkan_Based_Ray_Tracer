@@ -55,7 +55,7 @@ Image VkMemoryAllocator::create_image(VkExtent2D extent, VkFormat format, VkImag
 	return image;
 }
 
-Buffer VkMemoryAllocator::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) const{
+Buffer VkMemoryAllocator::create_buffer(VkDeviceSize size, VkDeviceSize stride, VkFormat format, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) const{
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = size;
@@ -74,7 +74,7 @@ Buffer VkMemoryAllocator::create_buffer(VkDeviceSize size, VkBufferUsageFlags us
 	if (vkBindBufferMemory(_context, buf, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("VkMemoryAllocator::Failed to bind memory to Buffer");
 
-	Buffer buffer(_context, memory, buf, size, usage, properties);
+	Buffer buffer(_context, memory, buf, size, stride, format, usage, properties);
 
 	return buffer;
 }
@@ -120,6 +120,8 @@ void VkMemoryAllocator::copy_to_buffer(CommandBuffer& cmdBuffer, Image& srcImage
 void VkMemoryAllocator::copy_to_buffer_directly(const void* data, Buffer& dstBuffer) const{
 	Buffer stagingBuffer = create_buffer(
 		dstBuffer.size,
+		dstBuffer.stride,
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	);
@@ -228,6 +230,8 @@ pstd::vector<Texture> VkMemoryAllocator::create_textures(const pstd::vector<Text
 	for (const auto& info : infos) {
 		Buffer stagingBuffer = create_buffer(
 			info.size,
+			info.size,
+			VK_FORMAT_UNDEFINED,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 		);

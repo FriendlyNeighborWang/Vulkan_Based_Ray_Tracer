@@ -5,8 +5,9 @@
 #include "base/base.h"
 #include "util/pstd.h"
 #include "util/Vec.h"
+#include "SkyBox.h"
 #include "vk_layer/Buffer.h"
-#include "vk_layer/Texture.h"
+
 
 
 struct SamplerData {
@@ -121,7 +122,9 @@ struct Scene {
 	Scene(Scene&&) = default;
 	Scene& operator=(Scene&&) = default;
 
-	Buffer& get_light_buffer(Context& context, SkyBox& skybox);
+	void register_skybox(const std::string& skybox_path);
+
+	Buffer& get_light_buffer(Context& context);
 	Buffer& get_material_buffer(Context& context);
 	pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*> get_textures_and_samplers(Context& context);
 
@@ -137,7 +140,7 @@ struct Scene {
 	Buffer get_dynamic_scene_info(Context& context);
 	Buffer& get_static_scene_info(Context& context);
 
-	
+	pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*> get_skybox_textures_and_samplers(Context& context);
 
 	pstd::vector<Material> materials;
 	pstd::vector<TextureData> textures;
@@ -190,7 +193,7 @@ struct Scene {
 
 private:
 	
-
+	SkyBox skybox;
 
 	Buffer lightBuffer; 
 	Buffer materialBuffer; 

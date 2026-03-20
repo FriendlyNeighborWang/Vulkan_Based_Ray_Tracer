@@ -95,6 +95,8 @@ BLAS::BLAS(Context& context, Mesh& mesh, const Buffer& vertexBuffer, const Buffe
 	// Acceleration Buffer
 	asBuffer = context.memAllocator().create_buffer(
 		sizeInfo.accelerationStructureSize,
+		sizeInfo.accelerationStructureSize,
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -113,6 +115,8 @@ BLAS::BLAS(Context& context, Mesh& mesh, const Buffer& vertexBuffer, const Buffe
 	// Create Scratch Buffer
 	Buffer scratchBuffer = context.memAllocator().create_buffer(
 		sizeInfo.buildScratchSize,
+		sizeInfo.buildScratchSize,
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -206,6 +210,8 @@ TLAS::TLAS(Context& context, Scene& scene):_device(context) {
 
 	Buffer instanceBuffer = context.memAllocator().create_buffer(
 		instanceBufferSize,
+		instanceBufferSize,
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -247,6 +253,8 @@ TLAS::TLAS(Context& context, Scene& scene):_device(context) {
 
 	asBuffer = context.memAllocator().create_buffer(
 		sizeInfo.accelerationStructureSize,
+		sizeInfo.accelerationStructureSize,
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -266,6 +274,8 @@ TLAS::TLAS(Context& context, Scene& scene):_device(context) {
 	// Create Scratch Buffer
 	Buffer scratchBuffer = context.memAllocator().create_buffer(
 		sizeInfo.buildScratchSize,
+		sizeInfo.buildScratchSize,
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT

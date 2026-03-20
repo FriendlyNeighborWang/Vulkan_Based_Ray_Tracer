@@ -8,10 +8,11 @@
 class SkyBox {
 public:
 	SkyBox();
-
 	SkyBox(const std::string& filePath);
 
-	const float get_total_power() const { return totalPower; }
+	SkyBox(SkyBox&& other) noexcept;
+	SkyBox& operator=(SkyBox&& other) noexcept;
+
 	pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*> get_skybox_textures_and_samplers(Context& context);
 
 private:
@@ -23,7 +24,6 @@ private:
 	pstd::vector<float> hdrData;
 	pstd::vector<float> conditionalCdf;
 	pstd::vector<float> marginalCdf;
-	float totalPower = 0.0f;
 
 	uint32_t _width, _height, _channels;
 

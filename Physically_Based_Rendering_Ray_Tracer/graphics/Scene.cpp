@@ -2,26 +2,22 @@
 
 #include "vk_layer/Context.h"
 #include "vk_layer/VkMemoryAllocator.h"
-#include "SkyBox.h"
 
-Buffer& Scene::get_light_buffer(Context& context, SkyBox& skybox) {
+
+void Scene::register_skybox(const std::string& skybox_path) {
+	skybox = SkyBox(skybox_path);
+	staticInfo.ifHasSkyBox = 1;
+}
+
+Buffer& Scene::get_light_buffer(Context& context) {
 	if (lightBuffer.is_aval()) return lightBuffer;
 
-	// Add Sky Box
-	Light skyboxlight;
-	if (float power = skybox.get_total_power(); power > 0.0f) {
-		skyboxlight.lightType = LIGHT_TYPE_SKYBOX;
-		skyboxlight.power = power;
-		skyboxlight.ifDelta = false;
-
-		staticInfo.lightCount += 1;
-		staticInfo.totalLightPower += power;
-		staticInfo.ifHasSkyBox = 1;
-	}
-	lights.push_back(skyboxlight);
+	if (lights.empty()) return placeholderBuffer(context);
 
 	lightBuffer = context.memAllocator().create_buffer(
 		lights.size() * sizeof(Light),
+		sizeof(Light),
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -39,6 +35,8 @@ Buffer& Scene::get_material_buffer(Context& context) {
 
 	materialBuffer = context.memAllocator().create_buffer(
 		materials.size() * sizeof(Material),
+		sizeof(Material),
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -97,6 +95,8 @@ Buffer& Scene::get_geometry_buffer(Context& context) {
 
 	geometryBuffer = context.memAllocator().create_buffer(
 		geometries.size() * sizeof(GeometryStruct),
+		sizeof(GeometryStruct),
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -113,10 +113,13 @@ Buffer& Scene::get_vertex_buffer(Context& context) {
 
 	vertexBuffer = context.memAllocator().create_buffer(
 		vertices.size() * sizeof(Vector3f),
+		sizeof(Vector3f),
+		VK_FORMAT_R32G32B32_SFLOAT,
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-		VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR |
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | 
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 	);
 
@@ -131,10 +134,13 @@ Buffer& Scene::get_index_buffer(Context& context) {
 
 	indexBuffer = context.memAllocator().create_buffer(
 		indices.size() * sizeof(uint32_t),
+		sizeof(uint32_t),
+		VK_FORMAT_R32_UINT,
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 		VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | 
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+		VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 	);
 
@@ -150,6 +156,8 @@ Buffer& Scene::get_texcoord_buffer(Context& context) {
 
 	texcoordBuffer = context.memAllocator().create_buffer(
 		texcoords.size() * sizeof(Vector2f),
+		sizeof(Vector2f),
+		VK_FORMAT_R32G32_SFLOAT,
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -169,9 +177,12 @@ Buffer& Scene::get_normal_buffer(Context& context) {
 
 	normalBuffer = context.memAllocator().create_buffer(
 		normals.size() * sizeof(Normal),
+		sizeof(Normal),
+		VK_FORMAT_R32G32B32_SFLOAT,
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 	);
 
@@ -187,9 +198,12 @@ Buffer& Scene::get_tangent_buffer(Context& context) {
 
 	tangentBuffer = context.memAllocator().create_buffer(
 		tangents.size() * sizeof(Vector4f),
+		sizeof(Vector4f),
+		VK_FORMAT_R32G32B32A32_SFLOAT,
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 	);
 
@@ -206,6 +220,8 @@ Buffer Scene::get_dynamic_scene_info(Context& context) {
 	Buffer dynamic_scene_info_buffer;
 	dynamic_scene_info_buffer = context.memAllocator().create_buffer(
 		sizeof(SceneDynamicInfo),
+		sizeof(SceneDynamicInfo),
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	);
@@ -225,6 +241,8 @@ Buffer& Scene::get_static_scene_info(Context& context) {
 
 	staticSceneInfoBuffer = context.memAllocator().create_buffer(
 		sizeof(staticInfo),
+		sizeof(staticInfo),
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 	);
@@ -234,6 +252,9 @@ Buffer& Scene::get_static_scene_info(Context& context) {
 	return staticSceneInfoBuffer;
 }
 
+pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*> Scene::get_skybox_textures_and_samplers(Context& context) {
+	return skybox.get_skybox_textures_and_samplers(context);
+}
 
 
 Buffer& Scene::placeholderBuffer(Context& context) {
@@ -241,9 +262,12 @@ Buffer& Scene::placeholderBuffer(Context& context) {
 
 	_placeholderBuffer = context.memAllocator().create_buffer(
 		sizeof(uint32_t),
+		sizeof(uint32_t),
+		VK_FORMAT_UNDEFINED,
 		VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | 
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 	);
 

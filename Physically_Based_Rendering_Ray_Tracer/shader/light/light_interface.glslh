@@ -3,7 +3,7 @@
 
 #include "light_Mesh.glslh"
 #include "light_Directional.glslh"
-#include "light_SkyBox.glslh"
+#include "light_Point.glslh"
 
 uint selectLightByPower(inout uint rngState){
 	uint lightCount = staticInfo.lightCount;
@@ -32,14 +32,13 @@ LightSample sampleLight(inout uint rngState){
 
 	switch(lights[result.lightIdx].lightType){
 	case LIGHT_TYPE_MESH:
-		result.scalar = sampleMeshLight(result.lightIdx, rngState, result.vector);
+		result.vector = sampleMeshLight(result.lightIdx, rngState, result.scalar);
 		break;
 	case LIGHT_TYPE_DIRECTIONAL:
 		result.vector = sampleDirectionalLight(result.lightIdx);
 		break;
-
-	case LIGHT_TYPE_SKYBOX:
-		result.vector = sampleSkyBoxLight(rngState, result.scalar);
+	case LIGHT_TYPE_POINT:
+		samplePointLight(result.lightIdx, result.scalar);
 		break;
 	}
 
@@ -47,25 +46,26 @@ LightSample sampleLight(inout uint rngState){
 }
 
 float evaluateLightPDF(uint lightIdx, vec3 direction, float dist, vec3 vector){
-	float pdf = 0.0;
+	// Select PDf
+	float totalLightPower = staticInfo.totalLightPower;
+
+	float pdf = lights[lightIdx].power / totalLightPower;
 
 	switch(lights[lightIdx].lightType){
 	case LIGHT_TYPE_MESH:
-		pdf = evaluateMeshLightPDF(lightIdx, direction, dist, vector);
+		pdf *= evaluateMeshLightPDF(lightIdx, direction, dist, vector);
 		break;
 	case LIGHT_TYPE_DIRECTIONAL:
-		pdf = evaluateDirectionalLightPDF();
+		pdf *= evaluateDirectionalLightPDF();
 		break;
-
-	case LIGHT_TYPE_SKYBOX:
-		pdf = evaluateSkyBoxLightPDF(direction, vector);
+	case LIGHT_TYPE_POINT:
+		pdf *= evaluatePointLightPDF();
 		break;
 	}
 
 
 	return pdf;
 }
-
 
 
 #endif // !GLSL_LIGHT_INTERFACE_H

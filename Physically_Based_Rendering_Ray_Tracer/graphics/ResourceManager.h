@@ -26,7 +26,7 @@ public:
 	void register_resources(VkExtent2D extent, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, std::string binding_name, ResourceFlag flags, const pstd::vector<Pipeline*>& pipelines, VkDescriptorType descriptorType, VkShaderStageFlags stages, VkImageLayout targetLayout);
 	
 	// For creating Buffer inside the function
-	void register_resources(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, std::string binding_name, ResourceFlag flags, const pstd::vector<Pipeline*>& pipelines, VkDescriptorType descriptorType, VkShaderStageFlags stages);
+	void register_resources(VkDeviceSize size, VkDeviceSize stride, VkFormat format, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, std::string binding_name, ResourceFlag flags, const pstd::vector<Pipeline*>& pipelines, VkDescriptorType descriptorType, VkShaderStageFlags stages);
 
 	
 	void build(const std::string& header_file_name = "generated_descriptor_bindings.h");
@@ -34,6 +34,9 @@ public:
 	void rebuild_window_size_related_resources(VkExtent2D extent);
 
 	pstd::vector<VkDescriptorSet> get_descriptor_sets(uint32_t pipeline_id, uint32_t frame_idx);
+
+	const pstd::vector<VkVertexInputBindingDescription>& get_vertex_input_binding();
+	const pstd::vector< VkVertexInputAttributeDescription>& get_vertex_input_attribute();
 
 	template<typename ReturnType>
 	ReturnType* get_resource(const std::string& name) {
@@ -47,6 +50,7 @@ public:
 private:
 	std::string rf_flag_to_string(ResourceFlag flags);
 	ResourceFlag rf_get_frequency(ResourceFlag flags);
+	ResourceFlag rf_get_bind_point(ResourceFlag flags);
 	ResourceFlag rf_get_pipeline(uint32_t pipeline_id);
 
 	void generate_header(const std::string& filename);
@@ -67,6 +71,10 @@ private:
 	std::unordered_map<ResourceFlag, DescriptorSetLayout*> layouts;  
 	std::unordered_map<std::string, DescriptorSet*> sets;
 
+	// Vertex Input
+	pstd::vector<VkVertexInputBindingDescription> vertexInputBindings;
+	pstd::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
+
 	// Pipeline
 	std::unordered_set<uint32_t> pipeline_ids;
 	
@@ -74,6 +82,7 @@ private:
 	// Build Info
 	pstd::vector<DescriptorHandle> descriptors;
 	std::unordered_map<ResourceFlag, pstd::vector<std::string>> layout_binding_lists;
+	pstd::vector<std::string> vertex_input_list;
 
 	// Meta Resources
 	std::list<Image> images;

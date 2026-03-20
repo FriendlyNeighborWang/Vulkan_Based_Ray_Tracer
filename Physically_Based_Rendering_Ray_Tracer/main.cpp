@@ -22,7 +22,6 @@
 #include "graphics/Window.h"
 #include "graphics/SkyBox.h"
 #include "graphics/Renderer.h"
-#include "graphics/RenderPass.h"
 #include "graphics/SceneLoader.h"
 #include "graphics/ResourceManager.h"
 
@@ -75,9 +74,13 @@ int main() {
 	dIFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
 	dIFeatures.pNext = &asFeatures;
 
+	VkPhysicalDeviceDynamicRenderingFeatures dynRenderFeatures{};
+	dynRenderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+	dynRenderFeatures.pNext = &dIFeatures;
+
 	VkPhysicalDeviceFeatures2 features{};
 	features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	features.pNext = &dIFeatures;
+	features.pNext = &dynRenderFeatures;
 
 	auto validator = [&]() {
 		return
@@ -86,7 +89,8 @@ int main() {
 			scalarFeatures.scalarBlockLayout &&
 			bufferDeviceAddressFeatures.bufferDeviceAddress &&
 			dIFeatures.runtimeDescriptorArray &&
-			dIFeatures.shaderSampledImageArrayNonUniformIndexing;
+			dIFeatures.shaderSampledImageArrayNonUniformIndexing &&
+			dynRenderFeatures.dynamicRendering;
 		};
 	context.register_device_feature(features, validator);
 
@@ -110,12 +114,11 @@ int main() {
 	// Scene scene = sceneLoader.LoadScene("resource/Sponza_with_light/Sponza.gltf");
 	// Scene scene = sceneLoader.LoadScene("resource/cornell_box/scene.gltf");
 	// Scene scene = sceneLoader.LoadScene("resource/TransmissionTest/glTF/TransmissionTest.gltf");
-	// Scene scene = sceneLoader.LoadScene("resource/San_miguel/San_miguel.gltf");
-	Scene scene = sceneLoader.LoadScene("resource/Living_room/Living_room.gltf");
+	Scene scene = sceneLoader.LoadScene("resource/San_miguel/San_miguel.gltf");
+	// Scene scene = sceneLoader.LoadScene("resource/Living_room/Living_room.gltf");
 
 
-	// SkyBox skybox("./resource/skybox/qwantani_morning_puresky_4k.hdr");
-	SkyBox skybox;
+	scene.register_skybox("./resource/skybox/qwantani_morning_puresky_4k.hdr");
 
 	// Create Renderer
 	Renderer renderer(context, window, swapchain, scene);
@@ -135,14 +138,14 @@ int main() {
 	Buffer& indexBuffer = scene.get_index_buffer(context);
 	Buffer& materialBuffer = scene.get_material_buffer(context);
 	Buffer& geometryBuffer = scene.get_geometry_buffer(context);
-	Buffer& lightBuffer = scene.get_light_buffer(context, skybox);
+	Buffer& lightBuffer = scene.get_light_buffer(context);
 	Buffer& normalBuffer = scene.get_normal_buffer(context);
 	Buffer& tangentBuffer = scene.get_tangent_buffer(context);
 	Buffer& texcoordBuffer = scene.get_texcoord_buffer(context);
 	auto textures_and_samplers= scene.get_textures_and_samplers(context);
 	auto& textures = *pstd::get<0>(textures_and_samplers);
 	auto& samplers = *pstd::get<1>(textures_and_samplers);
-	auto skybox_textures_and_samplers = skybox.get_skybox_textures_and_samplers(context);
+	auto skybox_textures_and_samplers = scene.get_skybox_textures_and_samplers(context);
 	auto& skybox_textures = *pstd::get<0>(skybox_textures_and_samplers);
 	auto& skybox_samplers = *pstd::get<1>(skybox_textures_and_samplers);
 
@@ -156,26 +159,26 @@ int main() {
 
 
 	ResourceManager& resourceManager = context.resourceManager();
-	resourceManager.register_resources(std::move(staticSceneInfoBuffer), "SCENE_STATIC_INFO", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR);
-	resourceManager.register_resources(std::move(vertexBuffer), "VERTEX_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(indexBuffer), "INDEX_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(materialBuffer), "MATERIAL_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(geometryBuffer), "GEOMETRY_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(lightBuffer), "LIGHT_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(normalBuffer), "NORMAL_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(tangentBuffer), "TANGENT_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(texcoordBuffer), "TEXCOORD_BUFFER", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(staticSceneInfoBuffer), "SCENE_STATIC_INFO", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR);
+	resourceManager.register_resources(std::move(vertexBuffer), "VERTEX_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR | RF_BIND_VERTEX, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER , VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(indexBuffer), "INDEX_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(materialBuffer), "MATERIAL_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(geometryBuffer), "GEOMETRY_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(lightBuffer), "LIGHT_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(normalBuffer), "NORMAL_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR | RF_BIND_VERTEX, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(tangentBuffer), "TANGENT_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR | RF_BIND_VERTEX, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
+	resourceManager.register_resources(std::move(texcoordBuffer), "TEXCOORD_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
 	resourceManager.register_resources(std::move(textures), std::move(samplers), "TEXTURE_ARRAY", RF_STATIC, { &rtPipeline },
 		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
 	resourceManager.register_resources(std::move(accelerationStructure), "ACCELERATION_STRUCTURE", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 	resourceManager.register_resources(std::move(skybox_textures), std::move(skybox_samplers), "SKYBOX_TEXTURE_ARRAY", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR);
 
 
-	resourceManager.register_resources(static_cast<VkDeviceSize>(sizeof(Scene::SceneDynamicInfo)), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, "DYNAMIC_INFO", RF_PER_FRAME, { &rtPipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	resourceManager.register_resources(static_cast<VkDeviceSize>(sizeof(Scene::SceneDynamicInfo)), sizeof(Scene::SceneDynamicInfo), VK_FORMAT_UNDEFINED, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, "DYNAMIC_INFO", RF_PER_FRAME | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
 
-	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "HDR_IMAGE", RF_PER_FRAME | RF_WINDOW_SIZE_RELATED, { &rtPipeline, &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT, VK_IMAGE_LAYOUT_GENERAL);
-	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "LDR_IMAGE", RF_PER_FRAME | RF_WINDOW_SIZE_RELATED, { &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "HDR_IMAGE", RF_PER_FRAME | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED, { &rtPipeline, &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "LDR_IMAGE", RF_PER_FRAME | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED, { &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, VK_IMAGE_LAYOUT_GENERAL);
 
 
 	resourceManager.build();

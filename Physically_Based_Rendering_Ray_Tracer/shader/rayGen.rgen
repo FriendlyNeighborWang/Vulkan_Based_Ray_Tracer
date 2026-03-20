@@ -6,14 +6,14 @@
 #include "../base/shader_base.h"
 #include "./common/shaderCommon.glslh"
 
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DYNAMIC_DYNAMIC_INFO, set = PIPELINE_RAY_TRACING_DYNAMIC_SET, scalar) uniform SceneDynamicInfo{
+layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_DYNAMIC_DYNAMIC_INFO, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_DYNAMIC_SET, scalar) uniform SceneDynamicInfo{
 	CameraData camera;
 	uint samples_per_pixel;
 	uint iteration_depth;
 	vec2 _padding;
 } dynamicInfo;
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DYNAMIC_HDR_IMAGE, set = PIPELINE_RAY_TRACING_DYNAMIC_SET, rgba32f) uniform image2D storageImage;
-layout(binding = BINDING_PIPELINE_RAY_TRACING_STATIC_ACCELERATION_STRUCTURE, set = PIPELINE_RAY_TRACING_STATIC_SET) uniform accelerationStructureEXT tlas;
+layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_DYNAMIC_HDR_IMAGE, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_DYNAMIC_SET, rgba32f) uniform image2D storageImage;
+layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_ACCELERATION_STRUCTURE, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET) uniform accelerationStructureEXT tlas;
 
 
 layout(push_constant) uniform PushConsts{
@@ -73,7 +73,7 @@ void main(){
 				0,
 				0,
 				rayOrigin,
-				0.001,
+				0.0,
 				rayDirection,
 				10000.0,
 				0

@@ -1,5 +1,5 @@
-#ifndef GLSL_LIGHT_SKYBOX_H
-#define GLSL_LIGHT_SKYBOX_H
+#ifndef GLSL_SKYBOX_H
+#define GLSL_SKYBOX_H
 
 #extension GL_GOOGLE_include_directive : require
 #include "../common/hitShaderCommon.glslh"
@@ -22,7 +22,7 @@ uint binarySearchCDF(uint texIdx, uint row, uint count, float target){
 	return lo;
 }
 
-float evaluateSkyBoxLightPDF(vec3 direction, vec3 sample_point_and_theta){
+float evaluateSkyBoxPDF(vec3 direction, vec3 sample_point_and_theta){
 	ivec2 envSize = textureSize(skyboxTextures[0], 0);
 	uint width = envSize.x;
 	uint height = envSize.y;
@@ -48,7 +48,7 @@ float evaluateSkyBoxLightPDF(vec3 direction, vec3 sample_point_and_theta){
 }
 
 // return Direction
-vec3 sampleSkyBoxLight(inout uint rngState, out vec3 sample_point_and_theta){
+vec3 sampleSkyBox(inout uint rngState, out vec3 sample_point_and_theta){
 	float u1 = stepAndOutputRNGFloat(rngState);
 	float u2 = stepAndOutputRNGFloat(rngState);
 
@@ -80,4 +80,4 @@ vec3 sampleSkyBoxLight(inout uint rngState, out vec3 sample_point_and_theta){
 }
 
 
-#endif // !GLSL_LIGHT_SKYBOX_H
+#endif // !GLSL_SKYBOX_H
