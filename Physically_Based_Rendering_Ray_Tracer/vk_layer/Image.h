@@ -14,9 +14,9 @@ public:
 
 	static VkImageView create_imageview(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
-	void transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout, VkAccessFlags nextAccess,  VkPipelineStageFlags nextStage);
+	void transition_layout(CommandBuffer& cmdBuffer, VkImageLayout targetLayout, VkAccessFlags nextAccess,  VkPipelineStageFlags nextStage);
 
-	void transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout);
+	void transition_layout(CommandBuffer& cmdBuffer, VkImageLayout targetLayout);
 
 	void* map_memory();
 	void unmap_memory();

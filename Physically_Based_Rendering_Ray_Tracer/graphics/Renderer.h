@@ -16,8 +16,6 @@ public:
 
 	// void create_images();
 
-	void prepare_frame_context();
-
 	void realtime_render();
 	void offline_render(const std::string& name);
 
@@ -26,7 +24,7 @@ private:
 	void recreateSwapChain();
 
 	// For RealTime Renderer
-	void updateDynamicSceneInfo(Timer& timer, FrameContext& fc);
+	void updateDynamicSceneInfo(Timer& timer, Buffer& dynamicInfoBuffer);
 
 	// For Offline Renderer
 	void updateRenderingSetting(Scene::SceneDynamicInfo dynamicInfo);
@@ -38,10 +36,6 @@ private:
 	pstd::vector<Semaphore> renderFinishedSemaphores;
 	pstd::vector<Semaphore> imageAvailableSemaphores;
 	pstd::vector<Fence> inFlightFences;
-
-
-	// Resource
-	pstd::vector<FrameContext> frames;
 
 	// Reference
 	Window& window;
@@ -55,6 +49,7 @@ private:
 
 	uint32_t currentFrame = 0;
 	uint32_t frame_idx = 0;
+	uint32_t temporal_idx = 0;
 };
 
 

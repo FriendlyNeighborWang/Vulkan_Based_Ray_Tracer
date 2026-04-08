@@ -26,8 +26,8 @@ using Float = float;
 #endif // USE_DOUBLE_AS_FLOAT
 
 
-const uint32_t WIDTH = 1600;
-const uint32_t HEIGHT = 1200;
+const uint32_t WIDTH = 1920;
+const uint32_t HEIGHT = 1080;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 
@@ -60,9 +60,14 @@ class SkyBox;
 // Graphics
 class Window;
 class Renderer;
-class FrameContext;
 class InputManager;
 class ResourceManager;
+
+struct Reservoir;
+struct LightSample;
+struct MaterialSample;
+struct GBufferElement;
+struct GLSLLayoutInfo;
 
 // Util
 class TimerManager;
@@ -99,6 +104,7 @@ using ResourceFlag = uint64_t;
 // [bit 0:3] Update Frequency (hex digit 0)
 constexpr ResourceFlag RF_STATIC = 0x1ULL;
 constexpr ResourceFlag RF_PER_FRAME = 0x2ULL;
+constexpr ResourceFlag RF_TEMPORAL = 0x4ULL;
 
 // [bit 4:7] Bind Point (hex digit 1)
 constexpr ResourceFlag RF_BIND_DESCRIPTOR = 0x10ULL;

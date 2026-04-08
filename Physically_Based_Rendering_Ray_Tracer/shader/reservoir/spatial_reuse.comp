@@ -1,0 +1,94 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+#include "../generated/SPATIAL_REUSE_header.glslh"
+#include "reservoir_common.glslh"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConsts {
+	ReservoirPushConstants pc;
+};
+
+const float BASE_RADIUS = 30.0;
+const float BASE_HEIGHT = 1080.0;
+
+const uint NEIGHBOR_COUNT = 5;
+
+void main(){
+	const uvec2 pixel = gl_GlobalInvocationID.xy;
+	if(pixel.x >= pc.screen_width || pixel.y >= pc.screen_height) return;
+
+	const uint pixelIdx = pixel.y * pc.screen_width + pixel.x;
+
+	uint rngState = pixelIdx ^(pc.current_frame * 1664525u + 1013904223u);
+
+	// Use Prev Reservoir Buffer as Ping Pong Buffer
+	reservoirs_prev[pixelIdx] = reservoirs_current[pixelIdx];
+
+	// Early Out
+	if(gBuffer_current[pixelIdx].material.emission.r < 0.0) return;
+	if(length(gBuffer_current[pixelIdx].material.emission) > 0.0) return;
+
+	// Scale Reusing Radius
+	float searchRadius = BASE_RADIUS * (float(pc.screen_height) / BASE_HEIGHT);
+
+	vec3 posCurr = gBuffer_current[pixelIdx].worldPosition;
+	vec3 normalCurr = decodeOct(gBuffer_current[pixelIdx].compactShadingNormal);
+	vec3 V = normalize(dynamicInfo.camera.position - posCurr);
+	float camDist = max(length(posCurr - dynamicInfo.camera.position), 1.0);
+
+
+	for(uint i = 0; i < NEIGHBOR_COUNT; i++){
+		float angle = stepAndOutputRNGFloat(rngState) * 2.0 * PI;
+		float radius = stepAndOutputRNGFloat(rngState) * searchRadius;
+		ivec2 neighborPixel = ivec2(pixel) + ivec2(cos(angle) * radius, sin(angle) * radius);
+
+		if(neighborPixel.x < 0 || neighborPixel.x >= int(pc.screen_width) ||
+		   neighborPixel.y < 0 || neighborPixel.y >= int(pc.screen_height))
+			continue;
+		
+		uint neighborIdx = neighborPixel.y * pc.screen_width + neighborPixel.x;
+
+		// Similarity Test
+		vec3 posNeighbor = gBuffer_current[neighborIdx].worldPosition;
+		vec3 normalNeighbor = decodeOct(gBuffer_current[neighborIdx].compactShadingNormal);
+
+		if(length(posCurr - posNeighbor) > 0.1 * camDist) continue;
+		if(dot(normalCurr, normalNeighbor) < 0.906) continue;
+
+		Reservoir neighborRes = reservoirs_current[neighborIdx];
+		if(neighborRes.M == 0) continue;
+
+		vec3 L;
+		if(neighborRes.lightSample.lightIdx < 0){
+			L = neighborRes.lightSample.vector;
+		}else if(lights[neighborRes.lightSample.lightIdx].lightType == LIGHT_TYPE_DIRECTIONAL){
+			L = neighborRes.lightSample.vector;
+		}else{
+			L = normalize(neighborRes.lightSample.scalar - posCurr);
+		}
+
+		float newTargetPdf = evaluateTargetPdf(posCurr, normalCurr, V, L, neighborRes.lightSample, gBuffer_current[pixelIdx].material);
+
+		if(newTargetPdf < 1e-5){
+			reservoirs_prev[pixelIdx].M += neighborRes.M;
+			continue;
+		}
+
+		neighborRes.targetPdf = newTargetPdf;
+		neighborRes.wSum = neighborRes.W * neighborRes.M * newTargetPdf;
+
+		combine_reservoir_prev(pixelIdx, neighborRes, rngState);
+	}
+
+
+	if(reservoirs_prev[pixelIdx].targetPdf > 0.0)
+		reservoirs_prev[pixelIdx].W = reservoirs_prev[pixelIdx].wSum / (reservoirs_prev[pixelIdx].targetPdf * reservoirs_prev[pixelIdx].M);
+	else
+		reservoirs_prev[pixelIdx].W = 0.0;
+
+	
+}

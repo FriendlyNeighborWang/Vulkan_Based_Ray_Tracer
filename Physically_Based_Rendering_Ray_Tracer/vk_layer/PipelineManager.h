@@ -13,6 +13,7 @@ public:
 
 	RTPipeline& create_rt_pipeline(const std::string& name);
 	ComputePipeline& create_compute_pipeline(const std::string& name);
+	GraphicsPipeline& create_graphics_pipeline(const std::string& name);
 
 	Pipeline& get(const std::string& name) const;
 	Pipeline& get(uint32_t id) const;

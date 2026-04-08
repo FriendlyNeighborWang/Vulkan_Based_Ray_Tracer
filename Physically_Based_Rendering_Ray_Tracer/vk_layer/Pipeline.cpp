@@ -9,7 +9,7 @@ Pipeline::Pipeline(VkDevice device, const std::string& name) :_device(device), p
 	pipeline_id = next_pipeline_id++;
 }
 
-Pipeline::Pipeline(Pipeline&& other) noexcept: shaderModules(std::move(other.shaderModules)), descriptorSetLayouts(std::move(other.descriptorSetLayouts)), _pipeline(other._pipeline), _layout(other._layout), _device(other._device), pipeline_name(other.pipeline_name), pipeline_id(other.pipeline_id) {
+Pipeline::Pipeline(Pipeline&& other) noexcept: shaderModules(std::move(other.shaderModules)), descriptorSetLayouts(std::move(other.descriptorSetLayouts)), _pipeline(other._pipeline), _layout(other._layout), _device(other._device), pipeline_name(other.pipeline_name), pipeline_id(other.pipeline_id), pipeline_type(other.pipeline_type) {
 	other._pipeline = VK_NULL_HANDLE;
 	other._layout = VK_NULL_HANDLE;
 	other._device = VK_NULL_HANDLE;
@@ -28,6 +28,7 @@ Pipeline& Pipeline::operator=(Pipeline&& other) noexcept{
 	_device = other._device;
 	pipeline_name = other.pipeline_name;
 	pipeline_id = other.pipeline_id;
+	pipeline_type = other.pipeline_type;
 
 	other._pipeline = VK_NULL_HANDLE;
 	other._layout = VK_NULL_HANDLE;
@@ -56,6 +57,8 @@ VkShaderModule Pipeline::register_shader(std::string shader_path) {
 
 
 RTPipeline::RTPipeline(Context& context, const std::string& name) :Pipeline(context, name) {
+	pipeline_type = PipelineType::RAY_TRACING;
+
 	if (vkCreateRayTracingPipelinesKHR != nullptr && vkGetRayTracingShaderGroupHandlesKHR != nullptr) return;
 	vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(_device, "vkCreateRayTracingPipelinesKHR"));
 	vkGetRayTracingShaderGroupHandlesKHR = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(_device, "vkGetRayTracingShaderGroupHandlesKHR"));
@@ -339,7 +342,9 @@ void RTPipeline::arrange_shader_groups() {
 
 
 
-ComputePipeline::ComputePipeline(Context& context, const std::string& name) :Pipeline(context,name){}
+ComputePipeline::ComputePipeline(Context& context, const std::string& name) :Pipeline(context, name) {
+	pipeline_type = PipelineType::COMPUTE;
+}
 
 ComputePipeline::ComputePipeline(ComputePipeline&& other) noexcept :Pipeline(std::move(other)) {}
 
@@ -395,7 +400,9 @@ void ComputePipeline::build(Context& context, uint32_t push_constant_size) {
 }
 
 
-GraphicsPipeline::GraphicsPipeline(Context& context, const std::string& name):Pipeline(context, name) {}
+GraphicsPipeline::GraphicsPipeline(Context& context, const std::string& name) :Pipeline(context, name) {
+	pipeline_type = PipelineType::GRAPHICS;
+}
 
 GraphicsPipeline::GraphicsPipeline(GraphicsPipeline&& other) noexcept:
 	Pipeline(std::move(other)),

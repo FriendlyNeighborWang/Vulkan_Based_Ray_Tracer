@@ -1,0 +1,56 @@
+#ifndef GLSL_MATERIAL_SAMPLE_H
+#define GLSL_MATERIAL_SAMPLE_H
+
+MaterialSample getMaterialSample(uint materialIdx, vec2 uv){
+	MaterialSample result;
+	Material mat = materials[materialIdx];
+
+	result.materialType = mat.materialType;
+
+	// Albedo
+	result.albedo = mat.albedo.rgb;
+	if(mat.albedoTexture >= 0)
+		result.albedo *= texture(textures[nonuniformEXT(mat.albedoTexture)], uv).rgb;
+
+	// Emission
+	result.emission = mat.emission;
+	if(mat.emissiveTexture >= 0)
+		result.emission *= texture(textures[nonuniformEXT(mat.emissiveTexture)], uv).rgb;
+
+	// Matallic & Roughness
+	result.metallic = mat.metallic;
+	result.roughness = mat.roughness;
+
+	if(mat.metallicRoughnessTexture >= 0){
+		vec4 mr = texture(textures[nonuniformEXT(mat.metallicRoughnessTexture)], uv);
+		result.roughness *= mr.g;
+		result.metallic *= mr.b;
+	}
+
+	// Transmission
+	result.transmissionFactor = mat.transmissionFactor;
+	if(mat.transmissionTexture >= 0){
+		float T = texture(textures[nonuniformEXT(mat.transmissionTexture)], uv).r;
+		result.transmissionFactor *= T;
+	}
+
+	// IOR
+	result.ior = mat.ior;
+
+	// Specular
+	result.specularFactor = mat.specularFactor;
+	result.specular = mat.specular;
+	if(mat.specularTexture >= 0){
+		float s = texture(textures[nonuniformEXT(mat.specularTexture)], uv).a;
+		result.specularFactor *= s;
+	}
+	if(mat.specularColorTexture >= 0){
+		vec3 s = texture(textures[nonuniformEXT(mat.specularColorTexture)], uv).rgb;
+		result.specular *= s;
+	}
+
+
+	return result;
+}
+
+#endif // !GLSL_MATERIAL_SAMPLE_H

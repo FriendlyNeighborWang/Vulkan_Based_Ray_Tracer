@@ -14,13 +14,15 @@ struct PushConstants {
 	uint sample_batch;
 };
 
+struct ReservoirPushConstants {
+	uint current_frame;
+	uint screen_width;
+	uint screen_height;
+};
+
 struct ToneMappingPushConstants {
 	float exposure;
 };
-
-// Descriptor set & Binding
-
-#include "generated_descriptor_bindings.h"
 
 
 // Buffer Flag

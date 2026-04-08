@@ -29,6 +29,7 @@ public:
 	VkSwapchainKHR get() const { return swapChain; }
 	VkFormat getImageFormat() const { return _format; }
 	VkExtent2D getExtent() const { return _extent; }
+	VkDeviceSize getArea() const { return _extent.height * _extent.width; }
 	VkImage getImage(uint32_t idx) const { return _images[idx]; }
 	VkImageView getImageView(uint32_t idx) const { return _views[idx]; }
 	VkImageLayout getImageLayout(uint32_t idx) const { return _layouts[idx]; }

@@ -1,9 +1,6 @@
 #ifndef GLSL_LIGHT_DIRECTIONAL_H
 #define GLSL_LIGHT_DIRECTIONAL_H
 
-#extension GL_GOOGLE_include_directive : require
-#include "../common/hitShaderCommon.glslh"
-
 float evaluateDirectionalLightPDF(){
 	return 1.0f;
 }
@@ -13,6 +10,10 @@ vec3 sampleDirectionalLight(uint lightIdx){
 	Light light = lights[lightIdx];
 
 	return -normalize(light.direction);
+}
+
+vec3 evaluateDirectionalLight(uint lightIdx){
+	return lights[lightIdx].emission;
 }
 
 #endif // !GLSL_LIGHT_DIRECTIONAL_H

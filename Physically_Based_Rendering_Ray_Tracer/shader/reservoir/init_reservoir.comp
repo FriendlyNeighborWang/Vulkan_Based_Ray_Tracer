@@ -1,0 +1,110 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+#include "../generated/INITIALIZE_RESERVOIR_header.glslh"
+#include "reservoir_common.glslh"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+const uint SAMPLE_COUNT = 8;
+
+layout(push_constant) uniform PushConsts {
+    ReservoirPushConstants pc;  
+};
+
+void main(){
+	// Init rngState
+	const uvec2 pixel = gl_GlobalInvocationID.xy;
+	if(pixel.x >= pc.screen_width || pixel.y >= pc.screen_height)
+		return;
+
+	const uint pixelIdx = pixel.y * pc.screen_width + pixel.x;
+
+	uint rngState = pixelIdx ^ (pc.current_frame * 1664525u + 1013904223u);
+	
+	// ReInit Reservoir buffer
+	reservoirs_current[pixelIdx].wSum = 0.0;
+	reservoirs_current[pixelIdx].targetPdf = 0.0;
+	reservoirs_current[pixelIdx].W = 0.0;
+	reservoirs_current[pixelIdx].M = 0;
+
+	// Early Out
+	if(gBuffer_current[pixelIdx].material.emission.r < 0.0) return;
+	if(length(gBuffer_current[pixelIdx].material.emission) > 0.0) return;
+
+	// Sample Count
+	float totalPower = staticInfo.skyBoxPower + staticInfo.totalLightPower;
+	if(totalPower < 1e-5) return;
+	const uint light_sample_count = uint(SAMPLE_COUNT * (staticInfo.totalLightPower / totalPower));
+	const uint skybox_sample_count = SAMPLE_COUNT - light_sample_count;
+
+	// Sample & Fill Reservoir
+
+	vec3 shadingPos = gBuffer_current[pixelIdx].worldPosition;
+	vec3 N = decodeOct(gBuffer_current[pixelIdx].compactShadingNormal);
+	vec3 V = normalize(dynamicInfo.camera.position - shadingPos);
+	
+	
+
+	// light sample
+	for(uint i = 0; i < light_sample_count; i++){
+		Reservoir res;
+
+		LightSample lightSample = sampleLight(rngState);
+		
+		Light light = lights[lightSample.lightIdx];
+		if((light.lightType == LIGHT_TYPE_POINT || light.lightType == LIGHT_TYPE_SPOT) 
+		   && light.range > 0.0){
+			float dist = length(light.position - shadingPos);
+			if(dist > light.range) continue;
+		}
+
+		vec3 L;
+		float dist = 0.0;
+		if(lights[lightSample.lightIdx].lightType == LIGHT_TYPE_DIRECTIONAL){
+			L = lightSample.vector;
+		}
+		else{
+			vec3 unnorm_direct = lightSample.scalar - shadingPos;
+			dist = length(unnorm_direct);
+			L = unnorm_direct / dist;
+		}
+		lightSample.sourcePdf = evaluateLightPDF(lightSample.lightIdx, L, dist, lightSample.vector);
+
+		if(lightSample.sourcePdf < 1e-5) continue;
+
+		res.lightSample = lightSample;
+		res.targetPdf = evaluateTargetPdf(shadingPos, N, V, L, res.lightSample, gBuffer_current[pixelIdx].material);
+		res.wSum = res.targetPdf / res.lightSample.sourcePdf;
+		res.W = 0.0;
+		res.M = 1;
+
+		combine_reservoir(pixelIdx, res, rngState);
+	}
+
+	// SkyBox
+	for(uint i = 0; i < skybox_sample_count; i++){
+		Reservoir res;
+
+		LightSample lightSample;
+		lightSample.lightIdx = -1;
+		lightSample.vector = sampleSkyBox(rngState, lightSample.scalar);
+		lightSample.sourcePdf = evaluateSkyBoxPDF(lightSample.vector, lightSample.scalar);
+		
+		if(lightSample.sourcePdf < 1e-5) continue;
+
+		res.lightSample = lightSample;
+		res.targetPdf = evaluateTargetPdf(shadingPos, N, V, lightSample.vector, res.lightSample, gBuffer_current[pixelIdx].material);
+		res.wSum = res.targetPdf / res.lightSample.sourcePdf;
+		res.W = 0.0;
+		res.M = 1;
+
+		combine_reservoir(pixelIdx, res, rngState);
+	}
+
+	if(reservoirs_current[pixelIdx].targetPdf > 0.0)
+		reservoirs_current[pixelIdx].W = reservoirs_current[pixelIdx].wSum / (reservoirs_current[pixelIdx].targetPdf * reservoirs_current[pixelIdx].M);
+}
+
+

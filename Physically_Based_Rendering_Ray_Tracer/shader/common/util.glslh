@@ -46,4 +46,27 @@ float luminance(vec3 albedo){
 	return albedo.r * 0.2126 + albedo.g * 0.7152 + albedo.b * 0.0722;
 }
 
+vec2 signNotZero(vec2 v){
+	return vec2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
+}
+
+
+vec2 encodeOct(vec3 n){
+	n /= (abs(n.x) + abs(n.y) + abs(n.z));
+
+	if(n.z < 0.0){
+		n.xy = (1.0 - abs(n.yx)) * signNotZero(n.xy);
+	}
+	return n.xy;
+}
+
+vec3 decodeOct(vec2 f){
+	vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+	if(n.z < 0.0){
+		n.xy = (1.0 - abs(n.yx)) * signNotZero(n.xy);
+	}
+
+	return normalize(n);
+}
+
 #endif // !GLSL_UTIL_H

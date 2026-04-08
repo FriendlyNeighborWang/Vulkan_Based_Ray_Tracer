@@ -5,7 +5,39 @@
 #include "util.glslh"
 
 
-// Last Indirect Illumination Info
+// ============== Camera ==============
+
+struct CameraData {
+	vec3 position;
+	float yfov;
+	vec3 direction;
+	float znear;
+	vec3 up;
+	float zfar;
+};
+
+// ============== Scene Info ==============
+
+struct SceneStaticInfo {
+	uint lightCount;
+	float totalLightPower;
+	uint bufferFlags;
+	uint ifHasSkyBox;
+	float skyBoxPower;
+	vec3 _padding;
+};
+
+struct SceneDynamicInfo {
+	CameraData camera;
+	mat4 viewProj;
+	mat4 prevViewProj;
+	uint samples_per_pixel;
+	uint iteration_depth;
+	uint _padding[2];
+};
+
+// ============== Ray Payload ==============
+
 struct LastIIInfo{
 	vec3 shadingPoint;
 	float bsdfPdf;
@@ -28,6 +60,7 @@ struct ShadowRayInfo{
 	bool shadowBlocked;
 };
 
+// ============== Geometry & Material ==============
 
 struct GeometryStruct {
 	uint materialIdx;
@@ -39,7 +72,7 @@ struct GeometryStruct {
 };
 
 struct Material{
-    uint materialType;
+	uint materialType;
 	vec3 emission;
 	vec4 albedo;
 	vec3 specular;
@@ -71,22 +104,24 @@ struct MaterialSample{
 	float ior;
 	float specularFactor;
 	vec3 specular;
+	uint _padding;
 };
 
+// ============== Light ==============
 
 struct Light{
 	uint lightType;
 	vec3 emission;
 	float power;
 
-	vec3 position;	
+	vec3 position;
 	vec3 direction;
-	float range;		
+	float range;
 
-	float innerConeAngle; 
+	float innerConeAngle;
 	float outerConeAngle;
 
-	uint geometryIndex;	
+	uint geometryIndex;
 	float area;
 	mat4 transform;
 
@@ -95,11 +130,13 @@ struct Light{
 };
 
 struct LightSample{
-	uint lightIdx;
 	vec3 scalar;
+	int lightIdx;
 	vec3 vector;
+	float sourcePdf;
 };
 
+// ============== Hit Info ==============
 
 struct HitInfo{
 	vec3 objectPosition;
@@ -110,13 +147,22 @@ struct HitInfo{
 	uint globalGeometryIdx;
 };
 
-struct CameraData {
-	vec3 position;
-	float yfov;
-	vec3 direction;
-	float znear;
-	vec3 up;
-	float zfar;
+// ============== ReSTIR ==============
+
+struct GBufferElement{
+	vec3 worldPosition;
+	uint _padding;
+	vec2 compactShadingNormal;
+	vec2 compactGeoNormal;
+	MaterialSample material;
+};
+
+struct Reservoir{
+	LightSample lightSample;
+	float wSum;
+	float targetPdf;
+	float W;
+	uint M;
 };
 
 #endif // !GLSL_SHADER_COMMON_H

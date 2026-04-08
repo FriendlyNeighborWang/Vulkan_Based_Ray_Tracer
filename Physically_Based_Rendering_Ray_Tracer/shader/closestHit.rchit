@@ -1,6 +1,16 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_debug_printf : require
+
+#include "./generated/RAY_TRACING_header.glslh"
+
+// Ray Payload
+layout(location = 0) rayPayloadInEXT PassableInfo pld;
+layout(location = 1) rayPayloadEXT ShadowRayInfo srd;
+
+#include "./common/hitShaderCommon.glslh"
 #include "./sampling/NEE.glslh"
 
 

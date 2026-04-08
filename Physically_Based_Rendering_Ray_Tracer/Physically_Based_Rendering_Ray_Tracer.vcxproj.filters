@@ -67,6 +67,15 @@
     <Filter Include="shader\skybox">
       <UniqueIdentifier>{8029fe67-db26-4ca6-8985-f0d52e7aa0d1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shader\gBuffer">
+      <UniqueIdentifier>{e34fb2ef-ec03-422d-b8d9-63e3e1314c04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader\reservoir">
+      <UniqueIdentifier>{4629ed68-8fbb-47a7-a86a-628100e2fd6d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shader\generated">
+      <UniqueIdentifier>{4ce48861-ca8d-48c8-9503-8c5c59c551fa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="util\memory.h">
@@ -159,9 +168,6 @@
     <ClInclude Include="graphics\ResourceManager.h">
       <Filter>graphics</Filter>
     </ClInclude>
-    <ClInclude Include="base\generated_descriptor_bindings.h">
-      <Filter>base</Filter>
-    </ClInclude>
     <ClInclude Include="vk_layer\ShaderModule.h">
       <Filter>vk_layer</Filter>
     </ClInclude>
@@ -171,14 +177,17 @@
     <ClInclude Include="vk_layer\PipelineManager.h">
       <Filter>vk_layer</Filter>
     </ClInclude>
-    <ClInclude Include="graphics\FrameContext.h">
-      <Filter>graphics</Filter>
-    </ClInclude>
     <ClInclude Include="graphics\InputManager.h">
       <Filter>graphics</Filter>
     </ClInclude>
     <ClInclude Include="base\shader_base.h">
       <Filter>base</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\Reservoir_struct.h">
+      <Filter>graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics\GLSLLayoutInfo.h">
+      <Filter>graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -313,6 +322,54 @@
     </None>
     <None Include="shader\skybox\skybox.glslh">
       <Filter>shader\skybox</Filter>
+    </None>
+    <None Include="shader\gBuffer\gBuffer.rgen">
+      <Filter>shader\gBuffer</Filter>
+    </None>
+    <None Include="shader\gBuffer\gBuffer.rchit">
+      <Filter>shader\gBuffer</Filter>
+    </None>
+    <None Include="shader\gBuffer\gBuffer.rahit">
+      <Filter>shader\gBuffer</Filter>
+    </None>
+    <None Include="shader\reservoir\init_reservoir.comp">
+      <Filter>shader\reservoir</Filter>
+    </None>
+    <None Include="shader\reservoir\reservoir_common.glslh">
+      <Filter>shader\reservoir</Filter>
+    </None>
+    <None Include="shader\generated\G_BUFFER_header.glslh">
+      <Filter>shader\generated</Filter>
+    </None>
+    <None Include="shader\generated\INITIALIZE_RESERVOIR_header.glslh">
+      <Filter>shader\generated</Filter>
+    </None>
+    <None Include="shader\generated\RAY_TRACING_header.glslh">
+      <Filter>shader\generated</Filter>
+    </None>
+    <None Include="shader\generated\TEMPORAL_REUSE_header.glslh">
+      <Filter>shader\generated</Filter>
+    </None>
+    <None Include="shader\generated\TONE_MAPPING_header.glslh">
+      <Filter>shader\generated</Filter>
+    </None>
+    <None Include="shader\reservoir\temporal_reuse.comp">
+      <Filter>shader\reservoir</Filter>
+    </None>
+    <None Include="shader\generated\SPATIAL_REUSE_header.glslh">
+      <Filter>shader\generated</Filter>
+    </None>
+    <None Include="shader\reservoir\spatial_reuse.comp">
+      <Filter>shader\reservoir</Filter>
+    </None>
+    <None Include="shader\ReSTIR.rgen">
+      <Filter>shader</Filter>
+    </None>
+    <None Include="shader\gBuffer\gBuffer.rmiss">
+      <Filter>shader\gBuffer</Filter>
+    </None>
+    <None Include="shader\material\material_sample.glslh">
+      <Filter>shader\material</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

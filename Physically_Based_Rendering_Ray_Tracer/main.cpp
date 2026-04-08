@@ -23,7 +23,9 @@
 #include "graphics/SkyBox.h"
 #include "graphics/Renderer.h"
 #include "graphics/SceneLoader.h"
+#include "graphics/GLSLLayoutInfo.h"
 #include "graphics/ResourceManager.h"
+#include "graphics/Reservoir_struct.h"
 
 
 
@@ -103,8 +105,6 @@ int main() {
 	context.init();
 
 
-
-
 	// Create SwapChain
 	SwapChain swapchain(context, window);
 
@@ -131,6 +131,10 @@ int main() {
 	// Create Pipeline & Import Shader
 	RTPipeline& rtPipeline = context.pipelineManager().create_rt_pipeline("RAY_TRACING");
 	ComputePipeline& toneMappingPipeline = context.pipelineManager().create_compute_pipeline("TONE_MAPPING");
+	RTPipeline& gBufferPipeline = context.pipelineManager().create_rt_pipeline("G_BUFFER");
+	ComputePipeline& initializeReservoirPipeline = context.pipelineManager().create_compute_pipeline("INITIALIZE_RESERVOIR");
+	ComputePipeline& temporalReusePipeline = context.pipelineManager().create_compute_pipeline("TEMPORAL_REUSE");
+	ComputePipeline& spatialReusePipeline = context.pipelineManager().create_compute_pipeline("SPATIAL_REUSE");
 	
 
 	// Scene Data
@@ -152,40 +156,105 @@ int main() {
 
 	// Scene Static Info
 	Buffer& staticSceneInfoBuffer = scene.get_static_scene_info(context);
-	
-	// RenderPass
-	// RenderPass rayTracingPass("RAY_TRACING", RenderPass::PassType::RAY_TRACING);
-	// RenderPass toneMappingPass("TONE_MAPPING", RenderPass::PassType::COMPUTE);
 
 
+	// Register Resource
 	ResourceManager& resourceManager = context.resourceManager();
-	resourceManager.register_resources(std::move(staticSceneInfoBuffer), "SCENE_STATIC_INFO", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR);
-	resourceManager.register_resources(std::move(vertexBuffer), "VERTEX_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR | RF_BIND_VERTEX, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER , VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(indexBuffer), "INDEX_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(materialBuffer), "MATERIAL_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(geometryBuffer), "GEOMETRY_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(lightBuffer), "LIGHT_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(normalBuffer), "NORMAL_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR | RF_BIND_VERTEX, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(tangentBuffer), "TANGENT_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR | RF_BIND_VERTEX, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(texcoordBuffer), "TEXCOORD_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(textures), std::move(samplers), "TEXTURE_ARRAY", RF_STATIC, { &rtPipeline },
-		VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
-	resourceManager.register_resources(std::move(accelerationStructure), "ACCELERATION_STRUCTURE", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-	resourceManager.register_resources(std::move(skybox_textures), std::move(skybox_samplers), "SKYBOX_TEXTURE_ARRAY", RF_STATIC, { &rtPipeline }, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR);
+	resourceManager.register_resources(std::move(staticSceneInfoBuffer), "SCENE_STATIC_INFO", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		{"", "SceneStaticInfo", "staticInfo", false });
+
+	resourceManager.register_resources(std::move(vertexBuffer), "VERTEX_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "Vertex_Block", "vec3", "vertices", true });
+
+	resourceManager.register_resources(std::move(indexBuffer), "INDEX_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "Index_Block", "uint", "indices", true });
+
+	resourceManager.register_resources(std::move(materialBuffer), "MATERIAL_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "", "Material", "materials", true });
+
+	resourceManager.register_resources(std::move(geometryBuffer), "GEOMETRY_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "", "GeometryStruct", "geometries", true });
+
+	resourceManager.register_resources(std::move(lightBuffer), "LIGHT_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "", "Light", "lights", true });
+
+	resourceManager.register_resources(std::move(normalBuffer), "NORMAL_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "Normal_Block", "vec3", "normals", true});
+
+	resourceManager.register_resources(std::move(tangentBuffer), "TANGENT_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "Tangent_Block", "vec4", "tangents", true});
+
+	resourceManager.register_resources(std::move(texcoordBuffer), "TEXCOORD_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "Texcoord_Block", "vec2", "texcoords", true});
+
+	resourceManager.register_resources(std::move(textures), std::move(samplers), "TEXTURE_ARRAY", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline }, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		{ "", "", "textures", true });
+
+	resourceManager.register_resources(std::move(accelerationStructure), "ACCELERATION_STRUCTURE", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline }, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+		{ "", "", "tlas", false});
+
+	resourceManager.register_resources(std::move(skybox_textures), std::move(skybox_samplers), "SKYBOX_TEXTURE_ARRAY", RF_STATIC | RF_BIND_DESCRIPTOR, { &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline, &rtPipeline }, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		{ "", "", "skyboxTextures", true });
 
 
-	resourceManager.register_resources(static_cast<VkDeviceSize>(sizeof(Scene::SceneDynamicInfo)), sizeof(Scene::SceneDynamicInfo), VK_FORMAT_UNDEFINED, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, "DYNAMIC_INFO", RF_PER_FRAME | RF_BIND_DESCRIPTOR, { &rtPipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	resourceManager.register_resources(static_cast<VkDeviceSize>(sizeof(Scene::SceneDynamicInfo)), sizeof(Scene::SceneDynamicInfo), VK_FORMAT_UNDEFINED, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, "DYNAMIC_INFO", RF_PER_FRAME | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		{ "", "SceneDynamicInfo", "dynamicInfo", false });
 
 
-	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "HDR_IMAGE", RF_PER_FRAME | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED, { &rtPipeline, &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT, VK_IMAGE_LAYOUT_GENERAL);
-	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "LDR_IMAGE", RF_PER_FRAME | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED, { &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+	// Render Target
+	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "HDR_IMAGE", RF_PER_FRAME | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED, { &rtPipeline, &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_IMAGE_LAYOUT_GENERAL,
+		{ "", "", "hdrImage", false });
+
+	resourceManager.register_resources(swapchain.getExtent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "LDR_IMAGE", RF_PER_FRAME | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED, { &toneMappingPipeline }, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_IMAGE_LAYOUT_GENERAL,
+		{ "", "", "ldrImage", false });
+
+
+	// Reservoir Buffer
+	resourceManager.register_resources(
+		swapchain.getArea()* static_cast<VkDeviceSize>(sizeof(Reservoir)),
+		static_cast<VkDeviceSize>(sizeof(Reservoir)),
+		VK_FORMAT_UNDEFINED,
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		"RESERVOIR_BUFFER",
+		RF_TEMPORAL | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED,
+		{ &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline, &rtPipeline },
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "Reservoir_Buffer", "Reservoir", "reservoirs", true }
+	);
+
+	// G-Buffer
+	resourceManager.register_resources(
+		swapchain.getArea()* static_cast<VkDeviceSize>(sizeof(GBufferElement)),
+		static_cast<VkDeviceSize>(sizeof(GBufferElement)),
+		VK_FORMAT_UNDEFINED,
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		"G_BUFFER",
+		RF_TEMPORAL | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED,
+		{ &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline, &rtPipeline },
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		{ "G_Buffer", "GBufferElement", "gBuffer", true }
+	);
+		
+	
+	
 
 
 	resourceManager.build();
 
-	// Register Shaders
+	// Register Shaders¡¢
+	
+	gBufferPipeline.register_raygen_shader("./shader/gBuffer/gBuffer.rgen");
+	gBufferPipeline.register_miss_shader("./shader/gBuffer/gBuffer.rmiss");
+	gBufferPipeline.register_hit_group_shader("./shader/gBuffer/gBuffer.rchit", "./shader/gBuffer/gBuffer.rahit");
 
-	rtPipeline.register_raygen_shader("./shader/rayGen.rgen");
+	initializeReservoirPipeline.register_compute_shader("./shader/reservoir/init_reservoir.comp");
+	temporalReusePipeline.register_compute_shader("./shader/reservoir/temporal_reuse.comp");
+	spatialReusePipeline.register_compute_shader("./shader/reservoir/spatial_reuse.comp");
+
+	// rtPipeline.register_raygen_shader("./shader/rayGen.rgen");
+	rtPipeline.register_raygen_shader("./shader/ReSTIR.rgen");
 	rtPipeline.register_miss_shader("./shader/rayMiss.rmiss");
 	rtPipeline.register_miss_shader("./shader/shadowRayMiss.rmiss");
 	rtPipeline.register_hit_group_shader("./shader/closestHit.rchit", "./shader/alphaTest.rahit");
@@ -193,17 +262,21 @@ int main() {
 
 	toneMappingPipeline.register_compute_shader("./shader/tone_mapping.comp");
 
+	
+	// Build Pipeline
+	gBufferPipeline.build(context, sizeof(PushConstants));
+	initializeReservoirPipeline.build(context, sizeof(ReservoirPushConstants));
+	temporalReusePipeline.build(context, sizeof(ReservoirPushConstants));
+	spatialReusePipeline.build(context, sizeof(ReservoirPushConstants));
 	rtPipeline.build(context, sizeof(PushConstants));
 	toneMappingPipeline.build(context, sizeof(ToneMappingPushConstants));
 
 
-	// Render
-	renderer.prepare_frame_context();
+
 
 	// renderer.offline_render("result.hdr");
 	renderer.realtime_render();
 
 	vkDeviceWaitIdle(context);
-
 
 }

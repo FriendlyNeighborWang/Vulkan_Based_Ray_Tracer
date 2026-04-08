@@ -167,6 +167,8 @@ struct Scene {
 
 		// SkyBox
 		uint32_t ifHasSkyBox = 0;
+		float skyBoxPower = 0.0f;
+		uint32_t _padding[3];
 	};
 
 	struct SceneDynamicInfo {
@@ -179,6 +181,10 @@ struct Scene {
 		// Camera
 		CameraData camera;
 
+		// VP Matrix
+		glm::mat4 viewProj;
+		glm::mat4 prevViewProj;
+
 		// Ray Tracing Param
 		uint32_t samples_per_pixel = 16;
 		uint32_t iteration_depth = 8;
@@ -190,6 +196,9 @@ struct Scene {
 
 	Buffer& placeholderBuffer(Context& context);
 	static TextureData placeholderTextureData();
+
+	static glm::mat4 look_at(const Vector3f& eye, const Vector3f& target, const Vector3f& up);
+	static glm::mat4 perspective(float fovY, float aspect, float zNear, float zFar);
 
 private:
 	

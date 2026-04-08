@@ -1,9 +1,6 @@
 #ifndef GLSL_SKYBOX_H
 #define GLSL_SKYBOX_H
 
-#extension GL_GOOGLE_include_directive : require
-#include "../common/hitShaderCommon.glslh"
-
 uint binarySearchCDF(uint texIdx, uint row, uint count, float target){
 	uint lo = 0;
 	uint hi = count - 1;
@@ -30,6 +27,37 @@ float evaluateSkyBoxPDF(vec3 direction, vec3 sample_point_and_theta){
 	uint x = uint(sample_point_and_theta.x);
 	uint y = uint(sample_point_and_theta.y);
 	float theta = sample_point_and_theta.z;
+
+
+	float cdfCurr = texelFetch(skyboxTextures[nonuniformEXT(1)], ivec2(x,y), 0).r;
+	float cdfPrev = (x > 0) ? texelFetch(skyboxTextures[nonuniformEXT(1)], ivec2(x - 1,y), 0).r : 0.0;
+	float pConditional = cdfCurr - cdfPrev;
+
+	float mCdfCurr = texelFetch(skyboxTextures[nonuniformEXT(2)], ivec2(y, 0), 0).r;
+	float mCdfPrev = (y > 0) ? texelFetch(skyboxTextures[nonuniformEXT(2)], ivec2(y - 1, 0), 0).r : 0.0;
+	float pMarginal = mCdfCurr - mCdfPrev;
+
+
+	float sinTheta = sin(theta);
+	if(sinTheta < 1e-5) return 0.0;
+
+	return (pConditional * pMarginal * float(width) * float(height)) / (2.0 * PI * PI * sinTheta);
+}
+
+float evaluateSkyBoxPDF(vec3 direction){
+	ivec2 envSize = textureSize(skyboxTextures[0], 0);
+	uint width = envSize.x;
+	uint height = envSize.y;
+
+	float theta = acos(clamp(direction.y, -1.0, 1.0));
+	float phi = atan(direction.z, direction.x);
+	if(phi < 0.0) phi += 2.0 * PI;
+
+	float u = phi / (2.0 * PI);
+	float v = theta / PI;
+
+	uint x = clamp(uint(u * float(width)), 0, width - 1);
+	uint y = clamp(uint(v * float(height)), 0, height - 1);
 
 
 	float cdfCurr = texelFetch(skyboxTextures[nonuniformEXT(1)], ivec2(x,y), 0).r;
@@ -78,6 +106,24 @@ vec3 sampleSkyBox(inout uint rngState, out vec3 sample_point_and_theta){
 	return vec3(sinTheta * cosPhi, cosTheta, sinTheta * sinPhi);
 
 }
+
+// Return Radiance
+vec3 evaluateSkyBox(vec3 dir){
+	float theta = acos(clamp(dir.y, -1.0, 1.0));
+	float phi = atan(dir.z, dir.x);
+	if(phi < 0.0) phi += 2.0 * PI;
+
+	vec2 sample_uv = vec2(phi / (2.0 * PI), theta / PI);
+	return texture(skyboxTextures[0], sample_uv).rgb;
+}
+
+
+vec3 evaluateSkyBox(vec2 xy){
+	ivec2 texSize = textureSize(skyboxTextures[0], 0);
+	vec2 sample_uv = vec2((xy.x + 0.5) / float(texSize.x), (xy.y + 0.5) / float(texSize.y));
+	return texture(skyboxTextures[0], sample_uv).rgb;
+}
+
 
 
 #endif // !GLSL_SKYBOX_H

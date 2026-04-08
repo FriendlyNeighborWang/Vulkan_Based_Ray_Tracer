@@ -18,6 +18,8 @@ public:
 	void unmap_memory();
 	void write_buffer(const void* data, VkDeviceSize data_size = 0, VkDeviceSize offset = 0 );
 
+	void barrier(CommandBuffer& cmdBuffer, VkAccessFlags nextAccess, VkPipelineStageFlags nextStage);
+
 
 	operator const VkBuffer& () const { return _buffer; }
 	bool is_aval() const { return _buffer != VK_NULL_HANDLE; }
@@ -28,6 +30,9 @@ public:
 	VkFormat format;
 	VkBufferUsageFlags usage;
 	VkMemoryPropertyFlags memoryProperties;
+
+	VkAccessFlags currentAccessFlags = 0;
+	VkPipelineStageFlags currentPipelineStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 private:
 	Buffer(VkDevice device, VkDeviceMemory memory, VkBuffer buffer, VkDeviceSize size, VkDeviceSize stride, VkFormat format, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
 

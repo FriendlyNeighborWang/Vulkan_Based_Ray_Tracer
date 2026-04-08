@@ -12,12 +12,10 @@
 #include "vk_layer/DescriptorManager.h"
 #include "vk_layer/VkMemoryAllocator.h"
 
-#include "FrameContext.h"
 #include "ResourceManager.h"
 
 #include "stb_image_write.h"
 
-#include <cstdlib>
 
 Renderer::Renderer(Context& context, Window& window, SwapChain& swapChain, Scene& scene) :_context(context), window(window), swapChain(swapChain), scene(scene), inputManager(window, scene.dynamicInfo){
 	// Load Dynamic Function
@@ -25,29 +23,6 @@ Renderer::Renderer(Context& context, Window& window, SwapChain& swapChain, Scene
 }
 Renderer::~Renderer() = default;
 
-void Renderer::prepare_frame_context() {
-	while (_context.cmdPool().available_num() < MAX_FRAMES_IN_FLIGHT + 3)
-		_context.cmdPool().allocate_command_buffer();
-
-	for (uint32_t frame_idx = 0; frame_idx < MAX_FRAMES_IN_FLIGHT; ++frame_idx) {
-		FrameContext frameContext;
-		frameContext.cmdBuffer = _context.cmdPool().get_command_buffer();
-		for (uint32_t pipeline_id : _context.pipelineManager().all_ids()) {
-			std::string name = _context.pipelineManager().get_name(pipeline_id);
-			pstd::vector descriptor_sets = _context.resourceManager().get_descriptor_sets(pipeline_id, frame_idx);
-			frameContext.descripotrSets.insert({ name, std::vector<VkDescriptorSet>(descriptor_sets.begin(), descriptor_sets.end())});
-		}
-
-		// TODO:: Hard Coding now, will be changed by Render Graph
-		frameContext.images.insert({ "HDR_IMAGE", _context.resourceManager().get_resource<Image>("HDR_IMAGE" + std::to_string(frame_idx)) });
-		frameContext.images.insert({ "LDR_IMAGE" , _context.resourceManager().get_resource<Image>("LDR_IMAGE" + std::to_string(frame_idx)) });
-
-		frameContext.buffers.insert({ "DYNAMIC_INFO", _context.resourceManager().get_resource<Buffer>("DYNAMIC_INFO" + std::to_string(frame_idx)) });
-
-		frames.push_back(std::move(frameContext));
-	}
-	
-}
 
 void Renderer::recreateSwapChain() {
 	swapChain.recreate(window);
@@ -59,35 +34,59 @@ void Renderer::recreateSwapChain() {
 	
 }
 
-void Renderer::updateDynamicSceneInfo(Timer& timer, FrameContext& fc) {
+void Renderer::updateDynamicSceneInfo(Timer& timer, Buffer& dynamicInfoBuffer) {
 	// Update Data
 	inputManager.update(timer.get_delta());
 
 	auto& dynamic_info = scene.dynamicInfo;
 	
-	// Write into Uniform Buffer
-	auto& dynamic_info_buffer = fc.buffers.find("DYNAMIC_INFO")->second;
+	// Update ViewProj
+	dynamic_info.prevViewProj = dynamic_info.viewProj;
 
-	dynamic_info_buffer->write_buffer(&dynamic_info, sizeof(dynamic_info));
+	glm::mat4 view = Scene::look_at(
+		dynamic_info.camera.position,
+		dynamic_info.camera.position + dynamic_info.camera.direction,
+		dynamic_info.camera.up
+	);
+
+	glm::mat4 proj = Scene::perspective(
+		dynamic_info.camera.yfov,
+		float(swapChain.getExtent().width) / float(swapChain.getExtent().height),
+		dynamic_info.camera.znear, dynamic_info.camera.zfar
+	);
+	proj[1][1] *= -1;
+	dynamic_info.viewProj = proj * view;
+
+	// Write into Uniform Buffer
+
+	dynamicInfoBuffer.write_buffer(&dynamic_info, sizeof(dynamic_info));
 
 }
 
 void Renderer::updateRenderingSetting(Scene::SceneDynamicInfo dynamicInfo) {
-	for (auto& fc : frames) {
-		auto& dynamic_info_buffer = fc.buffers.find("DYNAMIC_INFO")->second;
+	for (uint32_t i = 0; i<MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		auto* dynamic_info_buffer = _context.resourceManager().get_resource<Buffer>("DYNAMIC_INFO" + std::to_string(i));
 		dynamic_info_buffer->write_buffer(&dynamicInfo, sizeof(dynamicInfo));
 	}
+	
 }
 
 void Renderer::realtime_render() {
 	// Get Pipeline
-	RTPipeline& rtPipeline = static_cast<RTPipeline&>(_context.pipelineManager().get("RAY_TRACING"));
-	ComputePipeline& tonemappingPipeline = static_cast<ComputePipeline&>(_context.pipelineManager().get("TONE_MAPPING"));
+	Pipeline& gBufferPipeline = _context.pipelineManager().get("G_BUFFER");
+	Pipeline& initializeReservoirPipeline = _context.pipelineManager().get("INITIALIZE_RESERVOIR");
+	Pipeline& temporalReusePipeline = _context.pipelineManager().get("TEMPORAL_REUSE");
+	Pipeline& spatialReusePipeline = _context.pipelineManager().get("SPATIAL_REUSE");
+	Pipeline& rtPipeline = _context.pipelineManager().get("RAY_TRACING");
+	Pipeline& tonemappingPipeline = _context.pipelineManager().get("TONE_MAPPING");
 
 	// Get Shader Groups Region
-	auto& groupRegions = static_cast<RTPipeline&>(_context.pipelineManager().get("RAY_TRACING")).get_shader_group_regions();
+	auto& gBufferGroupRegions = static_cast<RTPipeline&>(gBufferPipeline).get_shader_group_regions();
+	auto& groupRegions = static_cast<RTPipeline&>(rtPipeline).get_shader_group_regions();
 
 	// Push Constant
+	ReservoirPushConstants reservoirPushConstants;
 	PushConstants pushConstants;
 	ToneMappingPushConstants tmPushConstants;
 
@@ -110,7 +109,15 @@ void Renderer::realtime_render() {
 	// Set Renderring param
 	auto& renderingSeting = scene.dynamicInfo;
 	renderingSeting.iteration_depth = 3;
-	renderingSeting.samples_per_pixel = 8;
+	renderingSeting.samples_per_pixel = 1;
+
+	auto& cam = renderingSeting.camera;
+	glm::mat4 view = Scene::look_at(cam.position, cam.position + cam.direction, cam.up);
+	float aspect = static_cast<float>(swapChain.getExtent().width) / static_cast<float>(swapChain.getExtent().height);
+	glm::mat4 proj = Scene::perspective(cam.yfov, aspect, cam.znear, cam.zfar);
+	proj[1][1] *= -1;
+	renderingSeting.viewProj = proj * view;
+
 	updateRenderingSetting(renderingSeting);
 
 	// Render
@@ -127,15 +134,10 @@ void Renderer::realtime_render() {
 
 
 		inFlightFences[frame_idx].wait();
-		
 
-		// Resource Setting & Acquire Next Image
-		FrameContext& fc = frames[frame_idx];
-		CommandBuffer& renderCmdBuffer = fc.cmdBuffer;
-		Image& renderTarget = *fc.images.at("HDR_IMAGE");
-		Image& ldrImage = *fc.images.at("LDR_IMAGE");
+
+		// Acquire Next Image
 		Semaphore& imageAvaiableSemaphore = imageAvailableSemaphores[frame_idx];
-
 		uint32_t imageIndex;
 		VkResult result = swapChain.acquire_next_image(imageAvaiableSemaphore, &imageIndex);
 
@@ -150,19 +152,160 @@ void Renderer::realtime_render() {
 
 		inFlightFences[frame_idx].reset();
 
+		// Resource Setting 
+		CommandBuffer renderCmdBuffer = _context.cmdPool().get_command_buffer();
+		Image& renderTarget = *_context.resourceManager().get_resource<Image>("HDR_IMAGE" + std::to_string(frame_idx));
+		Image& ldrImage = *_context.resourceManager().get_resource<Image>("LDR_IMAGE" + std::to_string(frame_idx));
+
+		Buffer& dynamicInfoBuffer = *_context.resourceManager().get_resource<Buffer>("DYNAMIC_INFO" + std::to_string(frame_idx));
+		Buffer& gBuffer_current = *_context.resourceManager().get_resource<Buffer>("G_BUFFER" + std::to_string(temporal_idx));
+		Buffer& gBuffer_prev = *_context.resourceManager().get_resource<Buffer>("G_BUFFER" + std::to_string((temporal_idx + 1) % 2));
+		Buffer& reservoirBuffer_current = *_context.resourceManager().get_resource<Buffer>("RESERVOIR_BUFFER" + std::to_string(temporal_idx));
+		Buffer& reservoirBuffer_prev = *_context.resourceManager().get_resource<Buffer>("RESERVOIR_BUFFER" + std::to_string((temporal_idx + 1) % 2));
+
+		pstd::vector<VkDescriptorSet> gBuffer_sets = _context.resourceManager().get_descriptor_sets("G_BUFFER", frame_idx, temporal_idx);
+		pstd::vector<VkDescriptorSet> init_res_sets = _context.resourceManager().get_descriptor_sets("INITIALIZE_RESERVOIR", frame_idx, temporal_idx);
+		pstd::vector<VkDescriptorSet> temporal_reuse_sets = _context.resourceManager().get_descriptor_sets("TEMPORAL_REUSE", frame_idx, temporal_idx);
+		pstd::vector<VkDescriptorSet> spatial_reuse_sets = _context.resourceManager().get_descriptor_sets("SPATIAL_REUSE", frame_idx, temporal_idx);
+		pstd::vector<VkDescriptorSet> render_sets = _context.resourceManager().get_descriptor_sets("RAY_TRACING", frame_idx, temporal_idx);
+		pstd::vector<VkDescriptorSet> tone_mapping_sets = _context.resourceManager().get_descriptor_sets("TONE_MAPPING", frame_idx, temporal_idx);
+
+
 		// Start Timing
 		generalTimer.start();
 
 
-		// Render Pass
+		
 
 		renderCmdBuffer.begin();
 
-		// Bind Pipeline & Descriptor Set
-		vkCmdBindPipeline(renderCmdBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rtPipeline);
+		updateDynamicSceneInfo(deltaTimer, dynamicInfoBuffer);
 
-		updateDynamicSceneInfo(deltaTimer, fc);
-		std::vector<VkDescriptorSet>& render_sets = fc.descripotrSets.at("RAY_TRACING");
+		// ===================== Pass 1: G-Buffer (RT) =====================
+		gBuffer_current.barrier(renderCmdBuffer, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR);
+
+		vkCmdBindPipeline(renderCmdBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, gBufferPipeline);
+
+		vkCmdBindDescriptorSets(
+			renderCmdBuffer,
+			VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+			gBufferPipeline.pipeline_layout(),
+			0,
+			gBuffer_sets.size(), gBuffer_sets.data(),
+			0, nullptr
+		);
+
+		vkCmdTraceRaysKHR(
+			renderCmdBuffer,
+			&gBufferGroupRegions[0],
+			&gBufferGroupRegions[1],
+			&gBufferGroupRegions[2],
+			&gBufferGroupRegions[3],
+			swapChain.getExtent().width,
+			swapChain.getExtent().height,
+			1
+		);
+
+		// ===================== Pass 2: Init Reservoir (Compute) =====================
+		gBuffer_current.barrier(renderCmdBuffer, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+		reservoirBuffer_current.barrier(renderCmdBuffer, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+		vkCmdBindPipeline(renderCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, initializeReservoirPipeline);
+
+		vkCmdBindDescriptorSets(
+			renderCmdBuffer,
+			VK_PIPELINE_BIND_POINT_COMPUTE,
+			initializeReservoirPipeline.pipeline_layout(),
+			0,
+			init_res_sets.size(), init_res_sets.data(),
+			0, nullptr
+		);
+
+		reservoirPushConstants.current_frame = currentFrame;
+		reservoirPushConstants.screen_width = swapChain.getExtent().width;
+		reservoirPushConstants.screen_height = swapChain.getExtent().height;
+
+		vkCmdPushConstants(
+			renderCmdBuffer,
+			initializeReservoirPipeline.pipeline_layout(),
+			VK_SHADER_STAGE_COMPUTE_BIT,
+			0, sizeof(reservoirPushConstants),
+			&reservoirPushConstants
+		);
+
+		uint32_t groupCountX = (swapChain.getExtent().width + 15) / 16;
+		uint32_t groupCountY = (swapChain.getExtent().height + 15) / 16;
+
+		vkCmdDispatch(renderCmdBuffer, groupCountX, groupCountY, 1);
+
+		// ===================== Pass 3: Temporal Reuse (Compute) =====================
+		gBuffer_prev.barrier(renderCmdBuffer, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+		reservoirBuffer_prev.barrier(renderCmdBuffer, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+		reservoirBuffer_current.barrier(renderCmdBuffer, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+		vkCmdBindPipeline(renderCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, temporalReusePipeline);
+
+		vkCmdBindDescriptorSets(
+			renderCmdBuffer,
+			VK_PIPELINE_BIND_POINT_COMPUTE,
+			temporalReusePipeline.pipeline_layout(),
+			0,
+			temporal_reuse_sets.size(), temporal_reuse_sets.data(),
+			0, nullptr
+		);
+
+		vkCmdPushConstants(
+			renderCmdBuffer,
+			temporalReusePipeline.pipeline_layout(),
+			VK_SHADER_STAGE_COMPUTE_BIT,
+			0, sizeof(reservoirPushConstants),
+			&reservoirPushConstants
+		);
+
+		vkCmdDispatch(renderCmdBuffer, groupCountX, groupCountY, 1);
+
+		// ===================== Pass 4: Spatial Reuse (Compute) =====================
+		reservoirBuffer_current.barrier(renderCmdBuffer, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+		vkCmdBindPipeline(renderCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, spatialReusePipeline);
+
+		vkCmdBindDescriptorSets(
+			renderCmdBuffer,
+			VK_PIPELINE_BIND_POINT_COMPUTE,
+			spatialReusePipeline.pipeline_layout(),
+			0,
+			spatial_reuse_sets.size(), spatial_reuse_sets.data(),
+			0, nullptr
+		);
+
+		vkCmdPushConstants(
+			renderCmdBuffer,
+			spatialReusePipeline.pipeline_layout(),
+			VK_SHADER_STAGE_COMPUTE_BIT,
+			0, sizeof(reservoirPushConstants),
+			&reservoirPushConstants
+		);
+
+		vkCmdDispatch(renderCmdBuffer, groupCountX, groupCountY, 1);
+
+		reservoirBuffer_prev.barrier(renderCmdBuffer, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+		reservoirBuffer_current.barrier(renderCmdBuffer, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+		_context.memAllocator().copy_to_buffer(renderCmdBuffer, reservoirBuffer_prev, reservoirBuffer_current);
+
+		// ===================== Pass 5: ReSTIR Shading (RT) =====================
+		gBuffer_current.barrier(renderCmdBuffer, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR);
+		reservoirBuffer_current.barrier(renderCmdBuffer, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR);
+
+		renderTarget.transition_layout(
+			renderCmdBuffer,
+			VK_IMAGE_LAYOUT_GENERAL,
+			VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR
+		);
+
+
+		vkCmdBindPipeline(renderCmdBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rtPipeline);
 
 		vkCmdBindDescriptorSets(
 			renderCmdBuffer,
@@ -174,7 +317,7 @@ void Renderer::realtime_render() {
 		);
 		
 
-		// pushConstants.current_frame = currentFrame++;
+		pushConstants.current_frame = currentFrame;
 		pushConstants.sample_batch = 0;
 
 		vkCmdPushConstants(
@@ -185,10 +328,39 @@ void Renderer::realtime_render() {
 			&pushConstants
 		);
 
+		vkCmdTraceRaysKHR(
+			renderCmdBuffer,
+			&groupRegions[0],
+			&groupRegions[1],
+			&groupRegions[2],
+			&groupRegions[3],
+			swapChain.getExtent().width,
+			swapChain.getExtent().height,
+			1
+		);
+
+
+
+
+
+		// ===================== Pass 6: Tone Mapping (Compute) =====================
+
+		renderTarget.transition_layout(
+			renderCmdBuffer,
+			VK_IMAGE_LAYOUT_GENERAL,
+			VK_ACCESS_SHADER_READ_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+		);
+
+		ldrImage.transition_layout(
+			renderCmdBuffer,
+			VK_IMAGE_LAYOUT_GENERAL,
+			VK_ACCESS_SHADER_WRITE_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+		);
+
 
 		vkCmdBindPipeline(renderCmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, tonemappingPipeline);
-		
-		std::vector<VkDescriptorSet>& tone_mapping_sets = fc.descripotrSets.at("TONE_MAPPING");
 
 		vkCmdBindDescriptorSets(
 			renderCmdBuffer,
@@ -209,68 +381,18 @@ void Renderer::realtime_render() {
 			&tmPushConstants
 		);
 
-		// Image Layout Transition
-		renderTarget.transition_layout(
-			_context, renderCmdBuffer,
-			VK_IMAGE_LAYOUT_GENERAL,
-			VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR
-		);
-
-		// Trace Ray
-
-		vkCmdTraceRaysKHR(
-			renderCmdBuffer,
-			&groupRegions[0],
-			&groupRegions[1],
-			&groupRegions[2],
-			&groupRegions[3],
-			swapChain.getExtent().width,
-			swapChain.getExtent().height,
-			1
-		);
-
-
-
-
-
-		// Tone Mapping
-
-		renderTarget.transition_layout(
-			_context, renderCmdBuffer,
-			VK_IMAGE_LAYOUT_GENERAL,
-			VK_ACCESS_SHADER_READ_BIT,
-			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
-		);
-
-		ldrImage.transition_layout(
-			_context, renderCmdBuffer,
-			VK_IMAGE_LAYOUT_GENERAL,
-			VK_ACCESS_SHADER_WRITE_BIT,
-			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
-		);
-		
-
-		uint32_t groupCountX = (swapChain.getExtent().width + 15) / 16;
-		uint32_t groupCountY = (swapChain.getExtent().height + 15) / 16;
-
 		vkCmdDispatch(renderCmdBuffer, groupCountX, groupCountY, 1);
 
 
 
+		// ===================== Pass 7: Blit =====================
 
-
-		// Blit Pass
-
-		// Prepare for Blit
 		ldrImage.transition_layout(
-			_context, renderCmdBuffer,
+			renderCmdBuffer,
 			VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 			VK_ACCESS_TRANSFER_READ_BIT,
 			VK_PIPELINE_STAGE_TRANSFER_BIT
 		);
-
-
 
 		swapChain.image_layout_transtion(
 			imageIndex, renderCmdBuffer,
@@ -290,7 +412,7 @@ void Renderer::realtime_render() {
 
 
 
-		// Prepare for Presentation
+		// ===================== Presentation =====================
 
 		swapChain.image_layout_transtion(
 			imageIndex, renderCmdBuffer,
@@ -324,10 +446,13 @@ void Renderer::realtime_render() {
 		timerManager.print_real_fps("General");
 
 		
-		frame_idx = (frame_idx + 1) % MAX_FRAMES_IN_FLIGHT;
+		currentFrame++;
+		frame_idx = currentFrame % MAX_FRAMES_IN_FLIGHT;
+		temporal_idx = currentFrame % 2;
 	}
 }
 
+// TODO:: Current with problem in snapped shot mode£¬gbuffer part has not been used 
 void Renderer::offline_render(const std::string& name) {
 	// Input Rendering Setting
 	system("cls");
@@ -366,12 +491,10 @@ void Renderer::offline_render(const std::string& name) {
 	auto& groupRegions = static_cast<RTPipeline&>(_context.pipelineManager().get("RAY_TRACING")).get_shader_group_regions();
 
 	// Resources
-	FrameContext& fc = frames[frame_idx];
-	CommandBuffer& cmdBuffer = fc.cmdBuffer;
-	Image& renderTarget = *fc.images.at("HDR_IMAGE");
+	CommandBuffer cmdBuffer = _context.cmdPool().get_command_buffer();
+	Image& renderTarget = *_context.resourceManager().get_resource<Image>("HDR_IMAGE" + std::to_string(frame_idx));
 
-	std::vector<VkDescriptorSet>& render_sets = fc.descripotrSets.at("RAY_TRACING");
-	std::vector<VkDescriptorSet>& tone_mapping_sets = fc.descripotrSets.at("TONE_MAPPING");
+	pstd::vector<VkDescriptorSet> render_sets = _context.resourceManager().get_descriptor_sets("RAY_TRACING", 0, 0);
 
 	PushConstants pushConstants;
 
@@ -412,7 +535,7 @@ void Renderer::offline_render(const std::string& name) {
 
 	// Layout Transition
 	renderTarget.transition_layout(
-		_context, cmdBuffer,
+		cmdBuffer,
 		VK_IMAGE_LAYOUT_GENERAL,
 		VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
 		VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR
@@ -459,7 +582,7 @@ void Renderer::offline_render(const std::string& name) {
 	// Layout Transition
 
 	renderTarget.transition_layout(
-		_context, cmdBuffer,
+		cmdBuffer,
 		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 		VK_ACCESS_TRANSFER_READ_BIT,
 		VK_PIPELINE_STAGE_TRANSFER_BIT
@@ -484,4 +607,3 @@ void Renderer::offline_render(const std::string& name) {
 	readableBuffer.unmap_memory();
 
 }
-

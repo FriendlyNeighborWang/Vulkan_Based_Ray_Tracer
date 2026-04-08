@@ -1,8 +1,10 @@
 #include "Buffer.h"
 
+#include "CommandPool.h"
+
 Buffer::Buffer(VkDevice device, VkDeviceMemory memory, VkBuffer buffer, VkDeviceSize size, VkDeviceSize stride, VkFormat format, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties): _device(device),_memory(memory),_buffer(buffer), size(size), stride(stride), format(format), usage(usage), memoryProperties(memoryProperties){}
 
-Buffer::Buffer(Buffer&& other) noexcept :_device(other._device), _memory(other._memory), _buffer(other._buffer), size(other.size), stride(other.stride), format(other.format), usage(other.usage), memoryProperties(other.memoryProperties), map_address(other.map_address) {
+Buffer::Buffer(Buffer&& other) noexcept :_device(other._device), _memory(other._memory), _buffer(other._buffer), size(other.size), stride(other.stride), format(other.format), usage(other.usage), memoryProperties(other.memoryProperties), currentAccessFlags(other.currentAccessFlags),currentPipelineStage(other.currentPipelineStage), map_address(other.map_address) {
 	other._memory = VK_NULL_HANDLE;
 	other._buffer = VK_NULL_HANDLE;
 	other._device = VK_NULL_HANDLE;
@@ -25,6 +27,8 @@ Buffer& Buffer::operator=(Buffer&& other) noexcept {
 	map_address = other.map_address;
 	usage = other.usage;
 	memoryProperties = other.memoryProperties;
+	currentAccessFlags = other.currentAccessFlags;
+	currentPipelineStage = other.currentPipelineStage;
 
 	other._memory = VK_NULL_HANDLE;
 	other._buffer = VK_NULL_HANDLE;
@@ -75,4 +79,29 @@ void Buffer::write_buffer(const void* data, VkDeviceSize data_size, VkDeviceSize
 	memcpy(static_cast<std::byte*>(map_address) + offset, data, data_size);
 
 	if (!buffer_mapped) unmap_memory();
+}
+
+void Buffer::barrier(CommandBuffer& cmdBuffer, VkAccessFlags nextAccess, VkPipelineStageFlags nextStage){
+	VkBufferMemoryBarrier barrier{};
+	barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	barrier.buffer = _buffer;
+	barrier.srcAccessMask = currentAccessFlags;
+	barrier.dstAccessMask = nextAccess;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.offset = 0;
+	barrier.size = VK_WHOLE_SIZE;
+
+	vkCmdPipelineBarrier(
+		cmdBuffer,
+		currentPipelineStage,
+		nextStage,
+		0,
+		0, nullptr,
+		1, &barrier,
+		0, nullptr
+	);
+
+	currentAccessFlags = nextAccess;
+	currentPipelineStage = nextStage;
 }

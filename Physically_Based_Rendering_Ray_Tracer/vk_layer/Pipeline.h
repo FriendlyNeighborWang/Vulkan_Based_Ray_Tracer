@@ -9,6 +9,8 @@
 
 class Pipeline {
 public:
+	enum class PipelineType { GRAPHICS, RAY_TRACING, COMPUTE};
+
 	Pipeline(VkDevice device, const std::string& name);
 
 	Pipeline(Pipeline&& other) noexcept;
@@ -19,6 +21,7 @@ public:
 
 	uint32_t get_id() const { return pipeline_id; }
 	const std::string& get_name() const { return pipeline_name; }
+	PipelineType get_pipeline_type() const { return pipeline_type; }
 
 	void register_descriptor_set_layout(pstd::vector<VkDescriptorSetLayout>& layouts);
 
@@ -38,7 +41,10 @@ protected:
 
 	std::string pipeline_name;
 	uint32_t pipeline_id;
+	PipelineType pipeline_type;
+
 	static inline uint32_t next_pipeline_id = 0;
+
 
 	VkPipeline _pipeline = VK_NULL_HANDLE;
 	VkPipelineLayout _layout = VK_NULL_HANDLE;
@@ -139,8 +145,6 @@ public:
 	virtual void build(Context&, uint32_t push_constant_size) override;
 	
 private:
-	// enum class ShaderType { VERTEX, TESSELATION_CONTROL, TESSELATION_EVALUATION, GEOMETRY, FRAGMENT };
-
 	pstd::vector<VkPipelineShaderStageCreateInfo> stages;
 
 	pstd::vector<VkVertexInputBindingDescription> vertexInputBindings;

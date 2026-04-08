@@ -4,6 +4,7 @@
 #extension GL_GOOGLE_include_directive : require
 #include "../light/light_interface.glslh"
 #include "../material/material_interface.glslh"
+#include "../material/material_sample.glslh"
 #include "../skybox/skybox.glslh"
 #include "MIS.glslh"
 
@@ -74,11 +75,8 @@ vec3 evaluateDI_Light(vec3 N, vec3 V, vec3 geoN, vec3 shadingPos, MaterialSample
 		return vec3(0.0);
 	}
 
-	radiance = light.emission;
-	if(light.lightType == LIGHT_TYPE_POINT)
-		radiance *= pointLightAttenuation(dist, light.range);
+	radiance = evaluateLight(lightSample.lightIdx, shadingPos);
 	
-
 	vec3 bsdf = evaluateMaterial(N, V, L, mat);
 
 	float MIS_weight = 1.0f;
@@ -139,11 +137,8 @@ vec3 evaluateDI_SkyBox(vec3 N, vec3 V, vec3 geoN, vec3 shadingPos, MaterialSampl
 	}
 
 	// Radiance
-	ivec2 texSize = textureSize(skyboxTextures[0], 0);
-	vec2 sample_uv = vec2((sample_point_and_theta.x + 0.5) / float(texSize.x), (sample_point_and_theta.y + 0.5) / float(texSize.y));
-	radiance = texture(skyboxTextures[0], sample_uv).rgb;
+	radiance = evaluateSkyBox(sample_point_and_theta.xy);
 
-	
 
 	vec3 bsdf = evaluateMaterial(N, V, L, mat);
 	float MIS_weight = 1.0f;

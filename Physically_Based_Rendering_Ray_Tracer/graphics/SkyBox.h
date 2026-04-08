@@ -15,6 +15,8 @@ public:
 
 	pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*> get_skybox_textures_and_samplers(Context& context);
 
+	float get_total_power() { return totalPower; }
+
 private:
 
 	static float luminance(float r, float g, float b) {
@@ -31,6 +33,8 @@ private:
 	pstd::vector<Texture> textures;
 	// hdrSampler, cdfSampler
 	pstd::vector<Sampler> samplers;
+
+	float totalPower = 0.0f;
 
 	bool if_use = false;
 };

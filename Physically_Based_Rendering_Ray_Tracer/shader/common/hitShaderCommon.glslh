@@ -1,73 +1,8 @@
-#ifndef GLSL_CLOSEST_HIT_COMMON_H
-#define GLSL_CLOSEST_HIT_COMMON_H
+#ifndef GLSL_HIT_SHADER_COMMON_H
+#define GLSL_HIT_SHADER_COMMON_H
 
-#extension GL_EXT_ray_tracing : require
-#extension GL_EXT_scalar_block_layout : require
-#extension GL_EXT_nonuniform_qualifier : require
-#extension GL_EXT_debug_printf : require
-#include "../../base/shader_base.h"
-#include "./shaderCommon.glslh"
 
 hitAttributeEXT vec2 attributes;
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SCENE_STATIC_INFO, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET) uniform SceneStaticInfo{
-	uint lightCount;
-	float totalLightPower;
-	uint bufferFlags;
-	uint ifHasSkyBox;
-} staticInfo;
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_ACCELERATION_STRUCTURE, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET) uniform accelerationStructureEXT tlas;
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_VERTEX_BUFFER, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET, scalar) buffer Vertices{
-	vec3 vertices[];
-};
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_INDEX_BUFFER, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET, scalar) buffer Indices{
-	uint indices[];
-};
-
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_MATERIAL_BUFFER, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET, scalar) buffer Materials{
-	Material materials[];
-};
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_GEOMETRY_BUFFER, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET, scalar) buffer Geometrys{
-	GeometryStruct geometries[];
-};
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_LIGHT_BUFFER, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET, scalar) buffer Lights{
-	Light lights[];
-};
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_TEXCOORD_BUFFER, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET, scalar) buffer Texcoords{
-	vec2 texcoords[];
-};
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_TEXTURE_ARRAY, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET) uniform sampler2D textures[];
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_NORMAL_BUFFER, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET, scalar) buffer Normals{
-	vec3 normals[];
-};
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_TANGENT_BUFFER, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET, scalar) buffer Tangents{
-	vec4 tangents[];
-};
-
-layout(binding = BINDING_PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SKYBOX_TEXTURE_ARRAY, set = PIPELINE_RAY_TRACING_DESCRIPTOR_SET_STATIC_SET) uniform sampler2D skyboxTextures[];
-
-
-#if defined(SHADER_STAGE_ANY_HIT_SHADOW)
-// Shadow ray any-hit: only receives srd
-layout(location = 1) rayPayloadInEXT ShadowRayInfo srd;
-#elif defined(SHADER_STAGE_ANY_HIT_PRIMARY)
-// Primary ray any-hit: only receives pld
-layout(location = 0) rayPayloadInEXT PassableInfo pld;
-#else
-// Closest-hit: receives pld, sends srd
-layout(location = 0) rayPayloadInEXT PassableInfo pld;
-layout(location = 1) rayPayloadEXT ShadowRayInfo srd;
-#endif
 
 bool hasNormals() { return (staticInfo.bufferFlags & BUFFER_FLAG_HAS_NORMALS) != 0; }
 bool hasTangents() { return (staticInfo.bufferFlags & BUFFER_FLAG_HAS_TANGENTS) != 0; }
@@ -193,57 +128,4 @@ vec2 getUV(GeometryStruct geo){
 }
 
 
-MaterialSample getMaterialSample(uint materialIdx, vec2 uv){
-	MaterialSample result;
-	Material mat = materials[materialIdx];
-
-	result.materialType = mat.materialType;
-
-	// Albedo
-	result.albedo = mat.albedo.rgb;
-	if(mat.albedoTexture >= 0)
-		result.albedo *= texture(textures[nonuniformEXT(mat.albedoTexture)], uv).rgb;
-
-	// Emission
-	result.emission = mat.emission;
-	if(mat.emissiveTexture >= 0)
-		result.emission *= texture(textures[nonuniformEXT(mat.emissiveTexture)], uv).rgb;
-
-	// Matallic & Roughness
-	result.metallic = mat.metallic;
-	result.roughness = mat.roughness;
-
-	if(mat.metallicRoughnessTexture >= 0){
-		vec4 mr = texture(textures[nonuniformEXT(mat.metallicRoughnessTexture)], uv);
-		result.roughness *= mr.g;
-		result.metallic *= mr.b;
-	}
-
-	// Transmission
-	result.transmissionFactor = mat.transmissionFactor;
-	if(mat.transmissionTexture >= 0){
-		float T = texture(textures[nonuniformEXT(mat.transmissionTexture)], uv).r;
-		result.transmissionFactor *= T;
-	}
-
-	// IOR
-	result.ior = mat.ior;
-
-	// Specular
-	result.specularFactor = mat.specularFactor;
-	result.specular = mat.specular;
-	if(mat.specularTexture >= 0){
-		float s = texture(textures[nonuniformEXT(mat.specularTexture)], uv).a;
-		result.specularFactor *= s;
-	}
-	if(mat.specularColorTexture >= 0){
-		vec3 s = texture(textures[nonuniformEXT(mat.specularColorTexture)], uv).rgb;
-		result.specular *= s;
-	}
-
-
-	return result;
-}
-
-
-#endif // !GLSL_CLOSEST_HIT_COMMON_H
+#endif // !GLSL_HIT_SHADER_COMMON_H

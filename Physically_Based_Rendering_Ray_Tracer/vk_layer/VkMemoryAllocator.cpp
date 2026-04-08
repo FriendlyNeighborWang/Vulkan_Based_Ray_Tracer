@@ -246,7 +246,7 @@ pstd::vector<Texture> VkMemoryAllocator::create_textures(const pstd::vector<Text
 		);
 
 		image.transition_layout(
-			_context, cmdBuffer,
+			cmdBuffer,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			VK_ACCESS_TRANSFER_WRITE_BIT,
 			VK_PIPELINE_STAGE_TRANSFER_BIT
@@ -257,7 +257,7 @@ pstd::vector<Texture> VkMemoryAllocator::create_textures(const pstd::vector<Text
 		copy_to_image(cmdBuffer, stagingBuffer, image);
 
 		image.transition_layout(
-			_context, cmdBuffer,
+			cmdBuffer,
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 			VK_ACCESS_SHADER_READ_BIT,
 			VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR

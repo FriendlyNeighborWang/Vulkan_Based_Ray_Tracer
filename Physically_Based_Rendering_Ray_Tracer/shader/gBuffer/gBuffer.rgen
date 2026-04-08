@@ -1,0 +1,55 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_debug_printf : require
+
+#include "../generated/G_BUFFER_header.glslh" 
+
+layout(location = 0) rayPayloadEXT uint payloadPixelIndex;
+
+void main(){
+	const uvec2 resolution = gl_LaunchSizeEXT.xy;
+	const uvec2 pixel = gl_LaunchIDEXT.xy;
+
+	if((pixel.x >= resolution.x)||(pixel.y >= resolution.y)){
+		return;
+	}
+
+	// Camera SetUp
+	const vec3 cameraOrigin = dynamicInfo.camera.position;
+	const vec3 cameraForward = normalize(dynamicInfo.camera.direction);
+	const vec3 cameraUp = normalize(dynamicInfo.camera.up);
+	const vec3 cameraRight = normalize(cross(cameraForward, cameraUp));
+
+	const float fovVerticalSlope = tan(dynamicInfo.camera.yfov * 0.5);
+	const float aspectRatio = float(resolution.x)/float(resolution.y);
+
+	const vec2 pixelCenter = vec2(pixel) + vec2(0.5);
+	const vec2 screenUV = vec2(
+		(2.0 * pixelCenter.x - resolution.x) / float(resolution.y),
+		(2.0 * pixelCenter.y - resolution.y) / float(resolution.y)
+	);
+
+	vec3 rayDirection = normalize(
+		cameraForward
+		+ fovVerticalSlope * screenUV.x * cameraRight
+		- fovVerticalSlope * screenUV.y * cameraUp
+	);
+
+	payloadPixelIndex = pixel.y * resolution.x + pixel.x;
+
+	traceRayEXT(
+		tlas,
+		gl_RayFlagsNoneEXT,
+		0xFF,
+		0,
+		0,
+		0,
+		cameraOrigin,
+		0.0,
+		rayDirection,
+		10000.0,
+		0
+	);
+
+}

@@ -1,9 +1,6 @@
 #ifndef GLSL_LIGHT_MESH_H
 #define GLSL_LIGHT_MESH_H
 
-#extension GL_GOOGLE_include_directive : require
-#include "../common/hitShaderCommon.glslh"
-
 
 float evaluateMeshLightPDF(uint lightIdx, vec3 rayDirection, float dist, vec3 lightNormal){
 	
@@ -68,6 +65,12 @@ vec3 sampleMeshLight(uint lightIdx, inout uint rngState, out vec3 pos){
 	pos = sampleTriangle(v0, v1, v2, rngState);
 	 
 	return normalize(normal);
+}
+
+
+// TODO:: Current with logical bugs, without considering emissive texture problem
+vec3 evaluateMeshLight(uint lightIdx){
+	return lights[lightIdx].emission;
 }
 
 #endif // !GLSL_LIGHT_MESH_H

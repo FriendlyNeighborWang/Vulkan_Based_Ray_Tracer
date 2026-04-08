@@ -1,11 +1,9 @@
 #ifndef GLSL_LIGHT_POINT_H
 #define GLSL_LIGHT_POINT_H
 
-#extension GL_GOOGLE_include_directive : require
-#include "../common/hitShaderCommon.glslh"
-
 float pointLightWindow(float dist, float range){
 	if(range <= 0.0) return 1.0;
+	if(dist > range) return 0.0;
 	float ratio = dist / range;
 	float ratio2 = ratio * ratio;
 	float ratio4 = ratio2 * ratio2;
@@ -29,6 +27,11 @@ void samplePointLight(uint lightIdx, out vec3 pos){
 	Light light = lights[lightIdx];
 
 	pos = light.position;
+}
+
+vec3 evaluatePointLight(uint lightIdx, vec3 shadingPos){
+	float dist = length(lights[lightIdx].position - shadingPos);
+	return lights[lightIdx].emission * pointLightAttenuation(dist, lights[lightIdx].range);
 }
 
 #endif // !GLSL_LIGHT_POINT_H

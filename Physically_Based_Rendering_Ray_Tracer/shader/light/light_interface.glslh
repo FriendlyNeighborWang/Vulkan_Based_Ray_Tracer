@@ -5,7 +5,7 @@
 #include "light_Directional.glslh"
 #include "light_Point.glslh"
 
-uint selectLightByPower(inout uint rngState){
+int selectLightByPower(inout uint rngState){
 	uint lightCount = staticInfo.lightCount;
 	float totalPower = staticInfo.totalLightPower;
 
@@ -16,10 +16,10 @@ uint selectLightByPower(inout uint rngState){
 	for(uint i = 0; i < lightCount; i++){
 		accumulatePower += lights[i].power;
 		if(accumulatePower >= target){
-			return i;
+			return int(i);
 		}
 	}
-	return lightCount - 1;
+	return int(lightCount - 1);
 }
 
 
@@ -65,6 +65,23 @@ float evaluateLightPDF(uint lightIdx, vec3 direction, float dist, vec3 vector){
 
 
 	return pdf;
+}
+
+vec3 evaluateLight(uint lightIdx, vec3 shadingPos){
+	vec3 radiance;
+	switch(lights[lightIdx].lightType){
+	case LIGHT_TYPE_MESH:
+		radiance = evaluateMeshLight(lightIdx);
+		break;
+	case LIGHT_TYPE_DIRECTIONAL:
+		radiance = evaluateDirectionalLight(lightIdx);
+		break;
+	case LIGHT_TYPE_POINT:
+		radiance = evaluatePointLight(lightIdx, shadingPos);
+		break;
+	}
+
+	return radiance;
 }
 
 

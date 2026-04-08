@@ -1,0 +1,45 @@
+#ifndef GLSL_RESERVOIR_COMMON_H
+#define GLSL_RESERVOIR_COMMON_H
+
+#include "../material/material_interface.glslh"
+#include "../light/light_interface.glslh"
+#include "../skybox/skybox.glslh"
+
+
+float evaluateTargetPdf(vec3 shadingPos, vec3 N, vec3 V, vec3 L, LightSample lightSample, MaterialSample materialSample){
+	vec3 radiance;
+	if(lightSample.lightIdx < 0){
+		// Skybox
+		radiance = evaluateSkyBox(lightSample.scalar.xy);
+	}else{
+		// light
+		radiance = evaluateLight(lightSample.lightIdx, shadingPos);
+	}
+
+	vec3 bsdf = evaluateMaterial(N, V, L, materialSample);
+
+	return luminance(radiance * bsdf * abs(dot(N, L)));
+}	
+
+
+void combine_reservoir(uint reservoirIdx, Reservoir new_res, inout uint rngState){
+	reservoirs_current[reservoirIdx].wSum += new_res.wSum;
+	reservoirs_current[reservoirIdx].M += new_res.M;
+
+	if(stepAndOutputRNGFloat(rngState) < new_res.wSum / reservoirs_current[reservoirIdx].wSum){
+		reservoirs_current[reservoirIdx].lightSample = new_res.lightSample;
+		reservoirs_current[reservoirIdx].targetPdf = new_res.targetPdf;
+	}
+}
+
+void combine_reservoir_prev(uint reservoirIdx, Reservoir new_res, inout uint rngState){
+	reservoirs_prev[reservoirIdx].wSum += new_res.wSum;
+	reservoirs_prev[reservoirIdx].M += new_res.M;
+
+	if(stepAndOutputRNGFloat(rngState) < new_res.wSum / reservoirs_prev[reservoirIdx].wSum){
+		reservoirs_prev[reservoirIdx].lightSample = new_res.lightSample;
+		reservoirs_prev[reservoirIdx].targetPdf = new_res.targetPdf;
+	}
+}
+
+#endif // !GLSL_RESERVOIR_COMMON_H

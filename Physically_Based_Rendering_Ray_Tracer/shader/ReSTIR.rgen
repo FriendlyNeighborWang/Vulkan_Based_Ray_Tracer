@@ -1,0 +1,166 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_debug_printf : require
+
+#include "./generated/RAY_TRACING_header.glslh"
+
+layout(push_constant) uniform PushConsts{
+	PushConstants pc;
+};
+
+layout(location = 0) rayPayloadEXT PassableInfo pld;
+
+layout(location = 1) rayPayloadEXT ShadowRayInfo srd;
+
+#include "./sampling/NEE.glslh"
+
+void main(){
+	const ivec2 resolution = imageSize(hdrImage);
+	const uvec2 pixel = gl_LaunchIDEXT.xy;
+
+	if((pixel.x >= resolution.x) || (pixel.y >= resolution.y)) return;
+
+	const uint pixelIdx = pixel.y * resolution.x + pixel.x;
+
+	GBufferElement gb = gBuffer_current[pixelIdx];
+	Reservoir res = reservoirs_current[pixelIdx];
+
+	// Miss (No SkyBox)
+	if(gBuffer_current[pixelIdx].material.emission.r < 0.0) {
+		imageStore(hdrImage, ivec2(pixel), vec4(vec3(0.0), 1.0));
+		return;
+	}
+
+	// Light Surface
+	if(length(gb.material.emission) > 0.0){
+		imageStore(hdrImage, ivec2(pixel), vec4(gb.material.emission, 1.0));
+		return;
+	}
+
+	vec3 shadingPos = gb.worldPosition;
+
+	vec3 N = decodeOct(gb.compactShadingNormal);
+	vec3 geoN = decodeOct(gb.compactGeoNormal);
+	vec3 V = normalize(dynamicInfo.camera.position - shadingPos);
+
+	uint rngState = pixelIdx ^(pc.current_frame * 1664525u + 1013904223u);
+
+	// Direct Lighting
+	vec3 directLighting = vec3(0.0);
+	if(res.W > 0.0 && res.targetPdf > 0.0){
+
+		vec3 L;
+		if(res.lightSample.lightIdx < 0){
+			L = res.lightSample.vector;
+
+			srd.targetT = 10000.0;
+			srd.shadowBlocked = true;
+			srd.throughput = vec3(1.0);
+		}else if(lights[res.lightSample.lightIdx].lightType == LIGHT_TYPE_DIRECTIONAL){
+			L = res.lightSample.vector;
+
+			srd.targetT = 10000.0;
+			srd.shadowBlocked = true;
+			srd.throughput = vec3(1.0);
+		}else{
+			Light light = lights[res.lightSample.lightIdx];
+			vec3 direct_unnorm = res.lightSample.scalar - shadingPos;
+			float dist = length(direct_unnorm);
+
+			L = direct_unnorm / dist;
+			srd.targetT = dist;
+			srd.shadowBlocked = true;
+			srd.throughput = vec3(1.0);
+		}
+
+
+		float NdotL = dot(N, L);
+		float geoNdotL = dot(geoN, L);
+
+		vec3 offsetNormal = geoNdotL > 0.0 ? geoN : -geoN;
+		vec3 shadowRayOrigin = offsetPositionAlongNormal(shadingPos, offsetNormal);
+
+		
+		if(!((NdotL <= 0.0 || geoNdotL <= 0.0) && gb.material.transmissionFactor < 1e-5)){
+			traceRayEXT(
+				tlas,
+				gl_RayFlagsNoneEXT, 
+				0xFF,
+				1,
+				0,
+				1,
+				shadowRayOrigin,
+				0.0,
+				L,
+				10000.0,
+				1
+			);
+
+			if(!srd.shadowBlocked){
+				vec3 radiance;
+				if(res.lightSample.lightIdx < 0){
+					radiance = evaluateSkyBox(res.lightSample.scalar.xy);
+				}else{
+					radiance = evaluateLight(res.lightSample.lightIdx, shadingPos);
+				}
+
+				vec3 bsdf = evaluateMaterial(N, V, L, gb.material);
+
+				directLighting = srd.throughput * radiance * bsdf * abs(NdotL) * res.W;
+			}
+		}
+	}
+
+	// Indirect Lighting
+	vec3 indirectLighting = vec3(0.0);
+	const uint NUM_DEPTH = dynamicInfo.iteration_depth;
+	
+	vec3 weight;
+	float pdf_bsdf;
+
+	vec3 L_indirect = evaluateII(N, V, geoN, gb.material, weight, pdf_bsdf, rngState);
+
+	if(pdf_bsdf > 1e-5){
+		pld.radiance = vec3(0.0);
+		pld.throughput = weight;
+		pld.ifStop = false;
+		pld.rngState = rngState;
+
+		pld.lastIIInfo.available = true;
+		pld.lastIIInfo.shadingPoint = shadingPos;
+		pld.lastIIInfo.bsdfPdf = pdf_bsdf;
+
+		float geoNdotL = dot(geoN, L_indirect);
+		vec3 offsetNormal = geoNdotL > 0.0 ? geoN : -geoN;
+		vec3 rayOrigin = offsetPositionAlongNormal(shadingPos, offsetNormal);
+
+		for(int depth = 0; depth < NUM_DEPTH; depth++){
+			traceRayEXT(
+				tlas,
+				gl_RayFlagsNoneEXT,
+				0xFF,
+				0,
+				0,
+				0,
+				rayOrigin,
+				0.0,
+				L_indirect,
+				10000.0,
+				0
+			);
+
+			if(pld.ifStop) break;
+
+			rayOrigin = pld.rayOrigin;
+			L_indirect = pld.rayDirection;
+		}
+
+		indirectLighting = pld.radiance;
+	}
+
+	vec3 color = directLighting + indirectLighting;
+	imageStore(hdrImage, ivec2(pixel), vec4(color, 1.0));
+
+}

@@ -63,7 +63,7 @@ VkImageView Image::create_imageview(VkDevice device, VkImage image, VkFormat for
 	return imageView;
 }
 
-void Image::transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout, VkAccessFlags nextAccess, VkPipelineStageFlags nextStage) {
+void Image::transition_layout(CommandBuffer& cmdBuffer, VkImageLayout targetLayout, VkAccessFlags nextAccess, VkPipelineStageFlags nextStage) {
 
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -104,7 +104,7 @@ void Image::transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImag
 	currentPipelineStage = nextStage;
 }
 
-void Image::transition_layout(Context& context, CommandBuffer& cmdBuffer, VkImageLayout targetLayout) {
+void Image::transition_layout(CommandBuffer& cmdBuffer, VkImageLayout targetLayout) {
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.image = _image;

@@ -98,7 +98,6 @@ SkyBox::SkyBox(const std::string& filePath): if_use(true) {
 				conditionalCdf[y * w + x] = static_cast<float>(x + 1) / static_cast<float>(w);
 			}
 			else {
-
 				culmulativeWeight += weightMap[y * w + x];
 				conditionalCdf[y * w + x] = culmulativeWeight / rowSum;
 			}
@@ -128,7 +127,7 @@ SkyBox::SkyBox(const std::string& filePath): if_use(true) {
 	}
 	marginalCdf[h - 1] = 1.0f;
 
-
+	totalPower = totalWeight * (2.0f * PI / static_cast<float>(w)) * (PI / static_cast<float>(h));
 }
 
 pstd::tuple<pstd::vector<Texture>*, pstd::vector<Sampler>*> SkyBox::get_skybox_textures_and_samplers(Context& context) {

@@ -7,6 +7,7 @@
 void Scene::register_skybox(const std::string& skybox_path) {
 	skybox = SkyBox(skybox_path);
 	staticInfo.ifHasSkyBox = 1;
+	staticInfo.skyBoxPower = skybox.get_total_power();
 }
 
 Buffer& Scene::get_light_buffer(Context& context) {
@@ -288,4 +289,31 @@ TextureData Scene::placeholderTextureData() {
 
 	if_placeholderTextureData_aval = true;
 	return _placeholderTextureData;
+}
+
+glm::mat4 Scene::look_at(const Vector3f& eye, const Vector3f& target, const Vector3f& up) {
+	glm::vec3 f = glm::normalize(glm::vec3(target.data) - glm::vec3(eye.data));
+	glm::vec3 s = glm::normalize(glm::cross(f, glm::vec3(up.data)));
+	glm::vec3 u = glm::cross(s, f);
+
+	glm::mat4 result(1.0f);
+	result[0][0] = s.x; result[1][0] = s.y; result[2][0] = s.z;
+	result[0][1] = u.x; result[1][1] = u.y; result[2][1] = u.z;
+	result[0][2] = -f.x; result[1][2] = -f.y; result[2][2] = -f.z;
+	result[3][0] = -glm::dot(s, glm::vec3(eye.data));
+	result[3][1] = -glm::dot(u, glm::vec3(eye.data));
+	result[3][2] = glm::dot(f, glm::vec3(eye.data));
+	return result;
+}
+
+glm::mat4 Scene::perspective(float fovY, float aspect, float zNear, float zFar) {
+	float tanHalfFov = std::tan(fovY * 0.5f);
+
+	glm::mat4 result(0.0f);
+	result[0][0] = 1.0f / (aspect * tanHalfFov);
+	result[1][1] = 1.0f / tanHalfFov;
+	result[2][2] = -(zFar + zNear) / (zFar - zNear);
+	result[2][3] = -1.0f;
+	result[3][2] = -(2.0f * zFar * zNear) / (zFar - zNear);
+	return result;
 }

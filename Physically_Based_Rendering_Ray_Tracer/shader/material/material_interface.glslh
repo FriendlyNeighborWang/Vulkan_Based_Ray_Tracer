@@ -19,7 +19,6 @@ float evaluateMaterialPDF(vec3 N, vec3 V, vec3 L, MaterialSample material){
 		pdf = evaluateCookTorrancePDF(N, V, L, material);
 		break;
 	}
-
 	return pdf;
 }
 

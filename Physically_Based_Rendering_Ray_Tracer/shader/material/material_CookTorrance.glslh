@@ -1,9 +1,6 @@
 #ifndef GLSL_MATERIAL_COOK_TORRANCE_H
 #define GLSL_MATERIAL_COOK_TORRANCE_H
 
-#extension GL_GOOGLE_include_directive : require
-#include "../common/shaderCommon.glslh"
-
 const float MIN_ROUGHNESS = 0.04;
 
 // ============== Normal Disutribution Function ==============

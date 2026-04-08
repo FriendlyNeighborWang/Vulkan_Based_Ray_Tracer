@@ -136,14 +136,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="base\base.h" />
-    <ClInclude Include="base\generated_descriptor_bindings.h" />
     <ClInclude Include="base\shader_base.h" />
     <ClInclude Include="deps\stb\stb_image.h" />
     <ClInclude Include="deps\stb\stb_image_write.h" />
     <ClInclude Include="deps\tiny_gltf\tiny_gltf.h" />
     <ClInclude Include="deps\tlsf\tlsf.h" />
-    <ClInclude Include="graphics\FrameContext.h" />
+    <ClInclude Include="graphics\GLSLLayoutInfo.h" />
     <ClInclude Include="graphics\InputManager.h" />
+    <ClInclude Include="graphics\Reservoir_struct.h" />
     <ClInclude Include="graphics\ResourceManager.h" />
     <ClInclude Include="graphics\Scene.h" />
     <ClInclude Include="graphics\Renderer.h" />
@@ -195,6 +195,16 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </CustomBuild>
     <None Include="resource\TransmissionTest\glTF\TransmissionTest.gltf" />
+    <None Include="shader\gBuffer\gBuffer.rahit" />
+    <None Include="shader\gBuffer\gBuffer.rchit" />
+    <None Include="shader\gBuffer\gBuffer.rgen" />
+    <None Include="shader\gBuffer\gBuffer.rmiss" />
+    <None Include="shader\generated\G_BUFFER_header.glslh" />
+    <None Include="shader\generated\INITIALIZE_RESERVOIR_header.glslh" />
+    <None Include="shader\generated\RAY_TRACING_header.glslh" />
+    <None Include="shader\generated\SPATIAL_REUSE_header.glslh" />
+    <None Include="shader\generated\TEMPORAL_REUSE_header.glslh" />
+    <None Include="shader\generated\TONE_MAPPING_header.glslh" />
     <None Include="shader\light\light_Directional.glslh" />
     <None Include="shader\light\light_Mesh.glslh">
       <FileType>Document</FileType>
@@ -258,6 +268,12 @@
     <None Include="shader\light\light_Point.glslh" />
     <None Include="shader\material\material_CookTorrance.glslh" />
     <None Include="shader\material\material_interface.glslh" />
+    <None Include="shader\material\material_sample.glslh" />
+    <None Include="shader\reservoir\init_reservoir.comp" />
+    <None Include="shader\reservoir\reservoir_common.glslh" />
+    <None Include="shader\reservoir\spatial_reuse.comp" />
+    <None Include="shader\reservoir\temporal_reuse.comp" />
+    <None Include="shader\ReSTIR.rgen" />
     <None Include="shader\sampling\MIS.glslh" />
     <None Include="shader\sampling\NEE.glslh" />
     <CustomBuild Include="shader\shadowRayHit.rchit">

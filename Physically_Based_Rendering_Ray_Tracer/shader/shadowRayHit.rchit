@@ -1,7 +1,9 @@
 #version 460
-#extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : require
-#include"./common/shaderCommon.glslh"
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_debug_printf : require
+
+#include "./generated/RAY_TRACING_header.glslh"
 
 layout(location = 1) rayPayloadInEXT ShadowRayInfo srd;
 

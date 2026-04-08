@@ -31,6 +31,19 @@ ComputePipeline& PipelineManager::create_compute_pipeline(const std::string& nam
 	return ref;
 }
 
+GraphicsPipeline& PipelineManager::create_graphics_pipeline(const std::string& name) {
+	std::unique_ptr ptr = std::make_unique<GraphicsPipeline>(_context, name);
+	GraphicsPipeline& ref = *ptr;
+	uint32_t index = static_cast<uint32_t>(pipelines.size());
+	pipelines.push_back(std::move(ptr));
+	ids.push_back(ref.get_id());
+	names.push_back(name);
+	name_to_index.insert({ name, index });
+	id_to_index.insert({ ref.get_id(), index });
+
+	return ref;
+}
+
 
 Pipeline& PipelineManager::get(const std::string& name) const { return *pipelines[name_to_index.at(name)]; }
 

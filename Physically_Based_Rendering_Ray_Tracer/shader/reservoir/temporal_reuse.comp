@@ -1,0 +1,89 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+#include "../generated/TEMPORAL_REUSE_header.glslh"
+#include "reservoir_common.glslh"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(push_constant) uniform PushConsts {
+    ReservoirPushConstants pc;  
+};
+
+const uint M_MAX = 24;
+
+void main(){
+	// Init rngState
+	const uvec2 pixel = gl_GlobalInvocationID.xy;
+	if(pixel.x >= pc.screen_width || pixel.y >= pc.screen_height)
+		return;
+
+	const uint pixelIdx = pixel.y * pc.screen_width + pixel.x;
+
+	uint rngState = pixelIdx ^ (pc.current_frame * 1664525u + 1013904223u);
+
+	// Early Out
+	if(gBuffer_current[pixelIdx].material.emission.r < 0.0) return;
+	if(length(gBuffer_current[pixelIdx].material.emission) > 0.0) return;
+
+	// Reprojection
+	vec4 clipPos = dynamicInfo.prevViewProj * vec4(gBuffer_current[pixelIdx].worldPosition, 1.0);
+	if(clipPos.w <= 0.0) return;
+
+	vec2 ndc = clipPos.xy / clipPos.w;
+
+	vec2 prevUV = ndc * 0.5 + 0.5;
+	if(any(lessThan(prevUV , vec2(0.0))) || any(greaterThanEqual(prevUV, vec2(1.0))))
+		return;
+
+	ivec2 prevPixel = ivec2(prevUV * vec2(pc.screen_width, pc.screen_height));
+	uint prevPixelIdx = prevPixel.y * pc.screen_width + prevPixel.x;
+
+	// Similarity Test
+	vec3 posCurr = gBuffer_current[pixelIdx].worldPosition;
+	vec3 posPrev = gBuffer_prev[prevPixelIdx].worldPosition;
+
+	float camDist = max(length(posCurr - dynamicInfo.camera.position), 1.0);
+	if(length(posCurr - posPrev) > 0.1 * camDist) return;
+
+	vec3 normalCurr = decodeOct(gBuffer_current[pixelIdx].compactShadingNormal);
+	vec3 normalPrev = decodeOct(gBuffer_prev[prevPixelIdx].compactShadingNormal);
+	if(dot(normalCurr, normalPrev) < 0.906)
+		return;
+
+	// M-Capping
+	Reservoir prevRes = reservoirs_prev[prevPixelIdx];
+	prevRes.M = min(prevRes.M, M_MAX);
+	
+	// ReEvaluate target PDF
+	vec3 V = normalize(dynamicInfo.camera.position - posCurr);
+	vec3 N = normalCurr;
+	vec3 L;
+	if(prevRes.lightSample.lightIdx < 0){
+		L = prevRes.lightSample.vector;
+	}else if(lights[prevRes.lightSample.lightIdx].lightType == LIGHT_TYPE_DIRECTIONAL){
+		L = prevRes.lightSample.vector;
+	}else{
+		L = normalize(prevRes.lightSample.scalar - posCurr);
+	}
+	
+	float newTargetPdf = evaluateTargetPdf(posCurr, N, V, L, prevRes.lightSample, gBuffer_current[pixelIdx].material);
+
+	if(newTargetPdf < 1e-5){
+		reservoirs_current[pixelIdx].M += prevRes.M;
+		return;
+	}
+
+	prevRes.targetPdf = newTargetPdf;
+	prevRes.wSum = prevRes.W * prevRes.M * newTargetPdf;
+	
+	// Combine Reservoir
+	combine_reservoir(pixelIdx, prevRes, rngState);
+
+	if(reservoirs_current[pixelIdx].targetPdf > 0.0)
+		reservoirs_current[pixelIdx].W = reservoirs_current[pixelIdx].wSum / (reservoirs_current[pixelIdx].targetPdf * reservoirs_current[pixelIdx].M);
+	else
+		reservoirs_current[pixelIdx].W = 0.0;
+
+}
