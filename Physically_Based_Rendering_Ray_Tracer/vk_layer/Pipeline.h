@@ -22,8 +22,9 @@ public:
 	uint32_t get_id() const { return pipeline_id; }
 	const std::string& get_name() const { return pipeline_name; }
 	PipelineType get_pipeline_type() const { return pipeline_type; }
+	const pstd::vector<VkDescriptorSetLayout>& get_descriptor_set_layout() const { return descriptorSetLayouts; }
 
-	void register_descriptor_set_layout(pstd::vector<VkDescriptorSetLayout>& layouts);
+	void register_descriptor_set_layout(const pstd::vector<VkDescriptorSetLayout>& layouts);
 
 	virtual VkShaderStageFlags supported_shader_stages() const = 0;
 	
@@ -69,7 +70,15 @@ public:
 
 	virtual void build(Context& context, uint32_t push_constant_size) override;
 
-	const auto& get_shader_group_regions() { return shaderGroupRegion; }
+	const auto& get_shader_group_regions() { return shaderGroupRegions; }
+
+	struct ShaderGroupRegions
+	{
+		pstd::vector<VkStridedDeviceAddressRegionKHR> rayGenRegion;
+		VkStridedDeviceAddressRegionKHR missRegion;
+		VkStridedDeviceAddressRegionKHR hitRegion;
+		VkStridedDeviceAddressRegionKHR callableRegion;
+	};
 
 private:
 	void arrange_shader_groups();
@@ -98,7 +107,7 @@ private:
 
 	Buffer sbtBuffer;
 	pstd::vector<uint8_t> shaderHandleStorage;
-	pstd::vector<VkStridedDeviceAddressRegionKHR> shaderGroupRegion;
+	ShaderGroupRegions shaderGroupRegions;
 
 	static inline PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelinesKHR = nullptr;
 	static inline PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandlesKHR = nullptr;

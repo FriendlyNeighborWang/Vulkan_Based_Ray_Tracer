@@ -7,6 +7,10 @@
 
 
 float evaluateTargetPdf(vec3 shadingPos, vec3 N, vec3 V, vec3 L, LightSample lightSample, MaterialSample materialSample){
+
+	float NdotL = dot(N, L);
+	if (NdotL <= 0.0 && materialSample.transmissionFactor < 1e-5) return 0.0;
+
 	vec3 radiance;
 	if(lightSample.lightIdx < 0){
 		// Skybox

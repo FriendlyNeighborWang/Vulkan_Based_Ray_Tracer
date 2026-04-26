@@ -13,7 +13,11 @@ void Scene::register_skybox(const std::string& skybox_path) {
 Buffer& Scene::get_light_buffer(Context& context) {
 	if (lightBuffer.is_aval()) return lightBuffer;
 
-	if (lights.empty()) return placeholderBuffer(context);
+	if (lights.empty())
+	{
+		lightBuffer = std::move(placeholderBuffer(context));
+		return lightBuffer;
+	}
 
 	lightBuffer = context.memAllocator().create_buffer(
 		lights.size() * sizeof(Light),
@@ -153,8 +157,11 @@ Buffer& Scene::get_index_buffer(Context& context) {
 Buffer& Scene::get_texcoord_buffer(Context& context) {
 	if (texcoordBuffer.is_aval())return texcoordBuffer;
 	
-	if (!(staticInfo.bufferFlags & BUFFER_FLAG_HAS_TEXCOORDS)) return placeholderBuffer(context);
+	if (!(staticInfo.bufferFlags & BUFFER_FLAG_HAS_TEXCOORDS)) {
 
+		texcoordBuffer = std::move(placeholderBuffer(context));
+		return texcoordBuffer;
+	}
 	texcoordBuffer = context.memAllocator().create_buffer(
 		texcoords.size() * sizeof(Vector2f),
 		sizeof(Vector2f),
@@ -174,8 +181,10 @@ Buffer& Scene::get_texcoord_buffer(Context& context) {
 Buffer& Scene::get_normal_buffer(Context& context) {
 	if (normalBuffer.is_aval())return normalBuffer;
 
-	if (!(staticInfo.bufferFlags & BUFFER_FLAG_HAS_NORMALS)) return placeholderBuffer(context);
+	if (!(staticInfo.bufferFlags & BUFFER_FLAG_HAS_NORMALS)) {
 
+		normalBuffer = std::move(placeholderBuffer(context));
+	}
 	normalBuffer = context.memAllocator().create_buffer(
 		normals.size() * sizeof(Normal),
 		sizeof(Normal),
@@ -195,8 +204,9 @@ Buffer& Scene::get_normal_buffer(Context& context) {
 Buffer& Scene::get_tangent_buffer(Context& context) {
 	if (tangentBuffer.is_aval()) return tangentBuffer;
 
-	if (!(staticInfo.bufferFlags & BUFFER_FLAG_HAS_TANGENTS)) return placeholderBuffer(context);
-
+	if (!(staticInfo.bufferFlags & BUFFER_FLAG_HAS_TANGENTS)) {
+		tangentBuffer = std::move(placeholderBuffer(context));
+	}
 	tangentBuffer = context.memAllocator().create_buffer(
 		tangents.size() * sizeof(Vector4f),
 		sizeof(Vector4f),
@@ -218,8 +228,7 @@ Buffer& Scene::get_tangent_buffer(Context& context) {
 
 
 Buffer Scene::get_dynamic_scene_info(Context& context) {
-	Buffer dynamic_scene_info_buffer;
-	dynamic_scene_info_buffer = context.memAllocator().create_buffer(
+	Buffer dynamic_scene_info_buffer = context.memAllocator().create_buffer(
 		sizeof(SceneDynamicInfo),
 		sizeof(SceneDynamicInfo),
 		VK_FORMAT_UNDEFINED,

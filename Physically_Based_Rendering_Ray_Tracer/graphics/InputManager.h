@@ -10,7 +10,7 @@ public:
 
 	void update(float delta);
 
-	bool pressed_trigger(const pstd::vector<int>& keys) const;
+	bool pressed_trigger(const pstd::vector<int>& keys, bool if_release = false) const;
 
 	void release_cursor();
 

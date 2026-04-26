@@ -61,9 +61,6 @@
     <Filter Include="resource\Living room">
       <UniqueIdentifier>{38e32548-c5ca-4b72-a5e3-6620defd82ae}</UniqueIdentifier>
     </Filter>
-    <Filter Include="resource\Bistro_Exterior">
-      <UniqueIdentifier>{858b0726-4161-4fa2-a643-5a004d492886}</UniqueIdentifier>
-    </Filter>
     <Filter Include="shader\skybox">
       <UniqueIdentifier>{8029fe67-db26-4ca6-8985-f0d52e7aa0d1}</UniqueIdentifier>
     </Filter>
@@ -75,6 +72,9 @@
     </Filter>
     <Filter Include="shader\generated">
       <UniqueIdentifier>{4ce48861-ca8d-48c8-9503-8c5c59c551fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resource\BistroExterior">
+      <UniqueIdentifier>{858b0726-4161-4fa2-a643-5a004d492886}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -314,9 +314,6 @@
     <None Include="resource\Living_room\Living_room.gltf">
       <Filter>resource\Living room</Filter>
     </None>
-    <None Include="resource\Bistro_Exterior\BistroExterior.gltf">
-      <Filter>resource\Bistro_Exterior</Filter>
-    </None>
     <None Include="shader\light\light_Point.glslh">
       <Filter>shader\light</Filter>
     </None>
@@ -370,6 +367,12 @@
     </None>
     <None Include="shader\material\material_sample.glslh">
       <Filter>shader\material</Filter>
+    </None>
+    <None Include="resource\BistroExterior\BistroExterior.gltf">
+      <Filter>resource\BistroExterior</Filter>
+    </None>
+    <None Include="shader\reservoir\visibility_reuse.rgen">
+      <Filter>shader\reservoir</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

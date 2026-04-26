@@ -19,6 +19,7 @@ vec3 evaluateDI_Light(vec3 N, vec3 V, vec3 geoN, vec3 shadingPos, MaterialSample
 
 	
 	float dist = 0.0f;
+	
 
 	if(light.lightType == LIGHT_TYPE_DIRECTIONAL){
 		L = lightSample.vector;
@@ -82,14 +83,39 @@ vec3 evaluateDI_Light(vec3 N, vec3 V, vec3 geoN, vec3 shadingPos, MaterialSample
 	float MIS_weight = 1.0f;
 
 	// Light PDF
-	pdf_light = evaluateLightPDF(lightSample.lightIdx, L, dist, lightSample.scalar);
+	pdf_light = evaluateLightPDF(lightSample.lightIdx, L, dist, lightSample.vector);
 	// BSDF PDF
 	if(light.ifDelta == 0){
 		float pdf_bsdf = evaluateMaterialPDF(N, V, L, mat);
 		MIS_weight = powerHeuristicWeight(pdf_light, pdf_bsdf);
 	}
 
-	return srd.throughput * MIS_weight * radiance * bsdf * abs(NdotL)  / pdf_light;	
+	// return srd.throughput * MIS_weight * radiance * bsdf * abs(NdotL)  / pdf_light;	
+	vec3 result = srd.throughput * MIS_weight * radiance * bsdf * abs(NdotL)  / pdf_light;
+
+
+	// Debug
+
+	// NdotL, pdf_light = Nan, 
+	/*if(any(isnan(direct_unnorm))){
+		debugPrintfEXT("lightSample.scalar = (%.5f, %.5f, %.5f)", lightSample.scalar.x, lightSample.scalar.y, lightSample.scalar.z);
+	}*/
+
+
+	/*if(any(isnan(result))){
+		debugPrintfEXT("At pixel (%d, %d), throughput = (%.5f, %.5f, %.5f), MIS weight = %.5f, radiance = (%.5f, %.5f, %.5f), bsdf = (%.5f, %.5f, %.5f), NdotL = %.5f, pdf_light = %.5f", 
+			gl_LaunchIDEXT.x, gl_LaunchIDEXT.y, 
+			srd.throughput.x, srd.throughput.y, srd.throughput.z, 
+			MIS_weight,
+			radiance.x, radiance.y, radiance.z,
+			bsdf.x, bsdf.y, bsdf.z,
+			NdotL,
+			pdf_light
+		);
+	}*/
+
+	// Debug
+	return result;
 
 }
 
@@ -237,6 +263,12 @@ vec3 sampleNEE(vec3 V, HitInfo hitInfo, inout LastIIInfo lastInfo, out vec3 weig
 		ifStop = true;
 	else 
 		ifStop = false;
+
+	// Debug
+	/*if(any(isnan(light_radiance))){
+		debugPrintfEXT("At pixel (%d, %d), light radiance = (%.5f, %.5f, %.5f)", gl_LaunchIDEXT.x, gl_LaunchIDEXT.y, light_radiance.x, light_radiance.y, light_radiance.z);
+	}*/
+	//Debug
 
 
 

@@ -182,7 +182,7 @@
     <ClCompile Include="graphics\SceneLoader.cpp" />
     <ClCompile Include="graphics\SkyBox.cpp" />
     <ClCompile Include="graphics\Window.cpp" />
-    <None Include="resource\Bistro_Exterior\BistroExterior.gltf" />
+    <None Include="resource\BistroExterior\BistroExterior.gltf" />
     <None Include="resource\Living_room\Living_room.gltf" />
     <None Include="resource\San_miguel\San_miguel.gltf" />
     <None Include="resource\Sponza\Sponza.gltf" />
@@ -273,6 +273,7 @@
     <None Include="shader\reservoir\reservoir_common.glslh" />
     <None Include="shader\reservoir\spatial_reuse.comp" />
     <None Include="shader\reservoir\temporal_reuse.comp" />
+    <None Include="shader\reservoir\visibility_reuse.rgen" />
     <None Include="shader\ReSTIR.rgen" />
     <None Include="shader\sampling\MIS.glslh" />
     <None Include="shader\sampling\NEE.glslh" />

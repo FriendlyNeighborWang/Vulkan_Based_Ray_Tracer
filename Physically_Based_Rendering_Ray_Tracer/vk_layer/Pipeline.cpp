@@ -42,8 +42,8 @@ Pipeline::~Pipeline() {
 	if (_layout != VK_NULL_HANDLE)vkDestroyPipelineLayout(_device, _layout, nullptr);
 }
 
-void Pipeline::register_descriptor_set_layout(pstd::vector<VkDescriptorSetLayout>& layouts) {
-	descriptorSetLayouts = std::move(layouts);
+void Pipeline::register_descriptor_set_layout(const pstd::vector<VkDescriptorSetLayout>& layouts) {
+	descriptorSetLayouts = layouts;
 }
 
 VkShaderModule Pipeline::register_shader(std::string shader_path) {
@@ -72,7 +72,7 @@ RTPipeline::RTPipeline(RTPipeline&& other) noexcept :
 	groups(std::move(other.groups)),
 	sbtBuffer(std::move(other.sbtBuffer)),
 	shaderHandleStorage(std::move(other.shaderHandleStorage)),
-	shaderGroupRegion(std::move(other.shaderGroupRegion)){}
+	shaderGroupRegions(std::move(other.shaderGroupRegions)){}
 
 
 RTPipeline& RTPipeline::operator=(RTPipeline&& other) noexcept {
@@ -83,7 +83,7 @@ RTPipeline& RTPipeline::operator=(RTPipeline&& other) noexcept {
 		groups = std::move(other.groups);
 		sbtBuffer = std::move(other.sbtBuffer);
 		shaderHandleStorage = std::move(other.shaderHandleStorage);
-		shaderGroupRegion = std::move(other.shaderGroupRegion);
+		shaderGroupRegions = std::move(other.shaderGroupRegions);
 	}
 	return *this;
 }
@@ -270,7 +270,6 @@ void RTPipeline::build(Context& context, uint32_t push_constant_size) {
 	}
 	sbtBuffer.unmap_memory();
 
-	shaderGroupRegion.resize(4);
 
 	uint32_t raygenShaderCount = 0, missShaderCount = 0, hitGroupCount = 0;
 	for (const auto& info : meta_group_infos) {
@@ -281,26 +280,30 @@ void RTPipeline::build(Context& context, uint32_t push_constant_size) {
 		}
 	}
 
+	shaderGroupRegions.rayGenRegion.resize(raygenShaderCount);
 	const VkDeviceAddress sbtStartAddress = sbtBuffer.device_address();
 	// Ray Gen
-	shaderGroupRegion[0].deviceAddress = sbtStartAddress;
-	shaderGroupRegion[0].stride = sbtStride;
-	shaderGroupRegion[0].size = sbtStride * raygenShaderCount;
-
+	for (uint32_t i = 0; i < raygenShaderCount; ++i)
+	{
+		shaderGroupRegions.rayGenRegion[i].deviceAddress = sbtStartAddress + sbtStride * i;
+		shaderGroupRegions.rayGenRegion[i].stride = sbtStride;
+		shaderGroupRegions.rayGenRegion[i].size = sbtStride;
+	}
+	
 	// Miss
-	shaderGroupRegion[1].deviceAddress = sbtStartAddress + sbtStride * raygenShaderCount;
-	shaderGroupRegion[1].stride = sbtStride;
-	shaderGroupRegion[1].size = sbtStride * missShaderCount;
-
+	shaderGroupRegions.missRegion.deviceAddress = sbtStartAddress + sbtStride * raygenShaderCount;
+	shaderGroupRegions.missRegion.stride = sbtStride;
+	shaderGroupRegions.missRegion.size = sbtStride * missShaderCount;
+	
 	// Hit
-	shaderGroupRegion[2].deviceAddress = sbtStartAddress + sbtStride * (raygenShaderCount + missShaderCount);
-	shaderGroupRegion[2].stride = sbtStride;
-	shaderGroupRegion[2].size = sbtStride * hitGroupCount;
+	shaderGroupRegions.hitRegion.deviceAddress = sbtStartAddress + sbtStride * (raygenShaderCount + missShaderCount);
+	shaderGroupRegions.hitRegion.stride = sbtStride;
+	shaderGroupRegions.hitRegion.size = sbtStride * hitGroupCount;
 
 	// Callable
-	shaderGroupRegion[3].deviceAddress = 0;
-	shaderGroupRegion[3].stride = 0;
-	shaderGroupRegion[3].size = 0;
+	shaderGroupRegions.callableRegion.deviceAddress = 0;
+	shaderGroupRegions.callableRegion.stride = 0;
+	shaderGroupRegions.callableRegion.size = 0;
 
 }
 

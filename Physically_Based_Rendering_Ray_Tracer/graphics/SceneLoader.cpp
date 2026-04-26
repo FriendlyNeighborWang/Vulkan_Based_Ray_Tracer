@@ -439,25 +439,25 @@ void SceneLoader::loadPunctualLights(Scene& scene) {
 
 
 void SceneLoader::loadMeshLights(Scene& scene) {
-	uint32_t globalGeometryIndex = 0;
 	uint32_t lightIdx = scene.lights.size();
 
 
 	// Load Mesh Light
 	for (const auto& instance : scene.instances) {
-		glm::mat4 instance_transform = instance.transform;
+		const Mesh& mesh = scene.meshes[instance.meshIndex];
+		uint32_t geoBase = mesh.firstGeometry;
 
-		for (auto& geo : scene.meshes[instance.meshIndex].geometries) {
-			const Material& mat = scene.materials[geo.materialIndex];
+		for (uint32_t localGeoIdx = 0; localGeoIdx < mesh.geometries.size(); ++localGeoIdx) {
+			auto& geo = scene.meshes[instance.meshIndex].geometries[localGeoIdx];
 
-			if (mat.emission.norm() > 0.001f) {
+			if (const Material& mat = scene.materials[geo.materialIndex]; mat.emission.norm() > 0.001f) {
 				geo.lightIdx = lightIdx++;
 
 				Light light{};
 				light.lightType = LIGHT_TYPE_MESH;
 				light.emission = mat.emission;
-				light.geometryIndex = globalGeometryIndex;
-				light.transform = instance_transform;
+				light.geometryIndex = geoBase + localGeoIdx;
+				light.transform = instance.transform;
 				light.area = computeMeshLightArea(scene, scene.meshes[instance.meshIndex], geo, light);
 				light.power = computeLightPower(light);
 				light.ifDelta = 0;
@@ -466,7 +466,6 @@ void SceneLoader::loadMeshLights(Scene& scene) {
 				scene.staticInfo.lightCount++;
 				scene.staticInfo.totalLightPower += light.power;
 			}
-			++globalGeometryIndex;
 		}
 	}
 

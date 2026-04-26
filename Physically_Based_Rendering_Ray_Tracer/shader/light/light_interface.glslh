@@ -42,6 +42,21 @@ LightSample sampleLight(inout uint rngState){
 		break;
 	}
 
+	// Debug
+	/*if(any(isnan(result.scalar)) || any(isnan(result.vector))){
+		debugPrintfEXT("sampleLight NaN: lightIdx=%d, lightType=%d, scalar=(%.5f, %.5f, %.5f), vector=(%.5f, %.5f, %.5f), power=%.5f, area=%.5f, range=%.5f, position=(%.5f, %.5f, %.5f)",
+			result.lightIdx,
+			lights[result.lightIdx].lightType,
+			result.scalar.x, result.scalar.y, result.scalar.z,
+			result.vector.x, result.vector.y, result.vector.z,
+			lights[result.lightIdx].power,
+			lights[result.lightIdx].area,
+			lights[result.lightIdx].range,
+			lights[result.lightIdx].position.x, lights[result.lightIdx].position.y, lights[result.lightIdx].position.z
+		);
+	}*/
+	// Debug
+
 	return result;
 }
 
@@ -50,19 +65,37 @@ float evaluateLightPDF(uint lightIdx, vec3 direction, float dist, vec3 vector){
 	float totalLightPower = staticInfo.totalLightPower;
 
 	float pdf = lights[lightIdx].power / totalLightPower;
+	float subPdf;
+
 
 	switch(lights[lightIdx].lightType){
 	case LIGHT_TYPE_MESH:
-		pdf *= evaluateMeshLightPDF(lightIdx, direction, dist, vector);
+		subPdf = evaluateMeshLightPDF(lightIdx, direction, dist, vector);
 		break;
 	case LIGHT_TYPE_DIRECTIONAL:
-		pdf *= evaluateDirectionalLightPDF();
+		subPdf = evaluateDirectionalLightPDF();
 		break;
 	case LIGHT_TYPE_POINT:
-		pdf *= evaluatePointLightPDF();
+		subPdf = evaluatePointLightPDF();
 		break;
 	}
 
+	pdf *= subPdf;
+
+	// Debug
+	/*if(isnan(pdf)){
+		debugPrintfEXT("lightIdx=%d, lightType=%d, lightPower=%.5f, totalPower=%.5f, subPdf=%.5f, direction=(%.5f, %.5f, %.5f), dist=%.5f, vector=(%.5f, %.5f, %.5f)",
+			lightIdx,
+			lights[lightIdx].lightType,
+			lights[lightIdx].power,
+			totalLightPower,
+			subPdf,
+			direction.x, direction.y, direction.z,
+			dist,
+			vector.x, vector.y, vector.z
+		);
+	}*/
+	// Debug
 
 	return pdf;
 }

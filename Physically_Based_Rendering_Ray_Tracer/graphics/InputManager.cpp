@@ -20,8 +20,17 @@ void InputManager::update(float delta) {
 	window.end_frame();
 }
 
-bool InputManager::pressed_trigger(const pstd::vector<int>& keys) const {
+bool InputManager::pressed_trigger(const pstd::vector<int>& keys, bool if_release) const {
 	if (keys.empty()) return false;
+
+	if (if_release)
+	{
+		for (uint32_t i = 0; i < keys.size() - 1; ++i)
+		{
+			if (!window.is_key_pressed(keys[i])) return false;
+		}
+		return window.is_key_released(keys.back());
+	}
 
 	for (const auto& key : keys) 
 		if (!window.is_key_pressed(key)) return false;
@@ -82,6 +91,9 @@ void InputManager::updateCamera(float delta) {
 	Vector3f forward = Normalize(Vector3f(direction.x(), 0.0f, direction.z()));
 	float speed = moveSpeed * delta;
 
+	if (window.is_key_pressed(GLFW_KEY_LEFT_SHIFT))
+		speed *= 4;
+
 	if (window.is_key_pressed(GLFW_KEY_W) || window.is_key_pressed(GLFW_KEY_UP))
 		camera.position += forward * speed;
 	if (window.is_key_pressed(GLFW_KEY_S) || window.is_key_pressed(GLFW_KEY_DOWN))
@@ -110,11 +122,11 @@ void InputManager::updateRenderingSettinges() {
 
 	// Samples Per Pixel
 	if (window.is_cursor_captured() && window.is_key_released(GLFW_KEY_Q)) {
-		dynamicInfo.samples_per_pixel = std::min(dynamicInfo.samples_per_pixel + 1, 32u);
+		dynamicInfo.samples_per_pixel = std::min(dynamicInfo.samples_per_pixel + 4, 32u);
 		LOG_STREAM("InputManager") << "Samples Per Pixel: " << dynamicInfo.samples_per_pixel << std::endl;
 	}
 	if (window.is_cursor_captured() && window.is_key_released(GLFW_KEY_Z)) {
-		dynamicInfo.samples_per_pixel = std::max(dynamicInfo.samples_per_pixel - 1, 1u);
+		dynamicInfo.samples_per_pixel = std::max(dynamicInfo.samples_per_pixel - 4, 4u);
 		LOG_STREAM("InputManager") << "Samples Per Pixel: " << dynamicInfo.samples_per_pixel << std::endl;
 	}
 }

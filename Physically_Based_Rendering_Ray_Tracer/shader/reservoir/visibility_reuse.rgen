@@ -1,0 +1,81 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_debug_printf : require
+
+#include "../generated/RAY_TRACING_header.glslh"
+
+layout(location = 1) rayPayloadEXT ShadowRayInfo srd;
+
+
+void main(){
+	const uvec2 pixel = gl_LaunchIDEXT.xy;
+	const ivec2 resolution = imageSize(hdrImage);
+
+	if(pixel.x >= resolution.x || pixel.y >= resolution.y) return;
+
+	const uint pixelIdx = pixel.y * resolution.x + pixel.x;
+
+	GBufferElement gb = gBuffer_current[pixelIdx];
+	Reservoir res = reservoirs_current[pixelIdx];
+
+	if(gb.material.emission.r < 0.0) return;
+	if(length(gb.material.emission) > 0.0) return;
+
+	if(res.M == 0 || res.W <= 0.0 || res.targetPdf <= 0.0) return;
+
+	vec3 shadingPos = gb.worldPosition;
+	vec3 geoN = decodeOct(gb.compactGeoNormal);
+	vec3 N = decodeOct(gb.compactShadingNormal);
+
+	vec3 L;
+	float tMax;
+	if(res.lightSample.lightIdx < 0){
+		// SkyBox
+		L = res.lightSample.vector;
+		tMax = 10000.0;
+	}else if(lights[res.lightSample.lightIdx].lightType == LIGHT_TYPE_DIRECTIONAL){
+		L = res.lightSample.vector;
+		tMax = 10000.0;
+	}else{
+		vec3 direct_unnorm = res.lightSample.scalar - shadingPos;
+		tMax = length(direct_unnorm);
+		L = direct_unnorm / tMax;
+	}
+
+	float NdotL = dot(N, L);
+	float geoNdotL = dot(geoN, L);
+
+	if((NdotL <= 0.0 || geoNdotL <= 0.0) && gb.material.transmissionFactor < 1e-5){
+		reservoirs_current[pixelIdx].W = 0.0;
+		reservoirs_current[pixelIdx].wSum = 0.0;
+		return;
+	}
+
+	vec3 offsetNormal = geoNdotL > 0.0 ? geoN : -geoN;
+	vec3 shadowRayOrigin = offsetPositionAlongNormal(shadingPos, offsetNormal);
+
+	srd.targetT = tMax;
+	srd.shadowBlocked = true;
+	srd.throughput = vec3(1.0);
+
+	traceRayEXT(
+		tlas,
+		gl_RayFlagsNoneEXT,
+		0xFF,
+		1,
+		0,
+		1,
+		shadowRayOrigin,
+		0.0,
+		L,
+		tMax,
+		1
+	);
+
+	if(srd.shadowBlocked){
+		reservoirs_current[pixelIdx].W = 0.0;
+		reservoirs_current[pixelIdx].wSum = 0.0;
+	}
+}

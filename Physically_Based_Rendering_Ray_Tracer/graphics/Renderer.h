@@ -18,6 +18,7 @@ public:
 
 	void realtime_render();
 	void offline_render(const std::string& name);
+	void original_render();
 
 private:
 

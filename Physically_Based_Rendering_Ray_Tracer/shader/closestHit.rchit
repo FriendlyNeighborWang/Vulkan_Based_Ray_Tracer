@@ -22,6 +22,11 @@ void main(){
 	vec3 weight = vec3(0.0);
 	vec3 radiance = sampleNEE(V, hitInfo, pld.lastIIInfo, weight, L, pld.ifStop, pld.rngState);
 
+	// Debug
+	/*if(any(isnan(radiance)) || any(isnan(weight))){
+		debugPrintfEXT("radiance = (%.5f, %.5f, %.5f), weight = (%.5f, %.5f, %.5f)", radiance.x, radiance.y, radiance.z, weight.x, weight.y, weight.z);
+	}*/
+	// Debug
 
 	pld.radiance += pld.throughput * radiance;
 	pld.throughput *= weight;

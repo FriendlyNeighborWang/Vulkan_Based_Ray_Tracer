@@ -1,13 +1,14 @@
 #version 460
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_debug_printf : require
 
 #include "../generated/INITIALIZE_RESERVOIR_header.glslh"
 #include "reservoir_common.glslh"
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-const uint SAMPLE_COUNT = 8;
+
 
 layout(push_constant) uniform PushConsts {
     ReservoirPushConstants pc;  
@@ -34,6 +35,7 @@ void main(){
 	if(length(gBuffer_current[pixelIdx].material.emission) > 0.0) return;
 
 	// Sample Count
+	const uint SAMPLE_COUNT = dynamicInfo.samples_per_pixel;
 	float totalPower = staticInfo.skyBoxPower + staticInfo.totalLightPower;
 	if(totalPower < 1e-5) return;
 	const uint light_sample_count = uint(SAMPLE_COUNT * (staticInfo.totalLightPower / totalPower));

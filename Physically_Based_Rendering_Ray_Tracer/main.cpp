@@ -110,15 +110,19 @@ int main() {
 
 	// Load Scene
 	SceneLoader& sceneLoader = SceneLoader::Get();
+	// Scene scene = sceneLoader.LoadScene("resource/cornell_box/scene.gltf");
 	// Scene scene = sceneLoader.LoadScene("resource/Sponza/Sponza.gltf");
 	// Scene scene = sceneLoader.LoadScene("resource/Sponza_with_light/Sponza.gltf");
-	// Scene scene = sceneLoader.LoadScene("resource/cornell_box/scene.gltf");
 	// Scene scene = sceneLoader.LoadScene("resource/TransmissionTest/glTF/TransmissionTest.gltf");
-	Scene scene = sceneLoader.LoadScene("resource/San_miguel/San_miguel.gltf");
-	// Scene scene = sceneLoader.LoadScene("resource/Living_room/Living_room.gltf");
+	// Scene scene = sceneLoader.LoadScene("resource/San_miguel/San_miguel.gltf");
+	Scene scene = sceneLoader.LoadScene("resource/Living_room/Living_room.gltf");
+	// Scene scene = sceneLoader.LoadScene("resource/BistroExterior/BistroExterior.gltf");
 
-
-	scene.register_skybox("./resource/skybox/qwantani_morning_puresky_4k.hdr");
+	
+	// scene.register_skybox("./resource/skybox/citrus_orchard_road_puresky_4k.hdr");
+	// scene.register_skybox("./resource/skybox/qwantani_morning_puresky_4k.hdr");
+	// scene.register_skybox("./resource/skybox/san_giuseppe_bridge_4k.hdr");
+	
 
 	// Create Renderer
 	Renderer renderer(context, window, swapchain, scene);
@@ -130,6 +134,7 @@ int main() {
 
 	// Create Pipeline & Import Shader
 	RTPipeline& rtPipeline = context.pipelineManager().create_rt_pipeline("RAY_TRACING");
+	
 	ComputePipeline& toneMappingPipeline = context.pipelineManager().create_compute_pipeline("TONE_MAPPING");
 	RTPipeline& gBufferPipeline = context.pipelineManager().create_rt_pipeline("G_BUFFER");
 	ComputePipeline& initializeReservoirPipeline = context.pipelineManager().create_compute_pipeline("INITIALIZE_RESERVOIR");
@@ -163,7 +168,7 @@ int main() {
 	resourceManager.register_resources(std::move(staticSceneInfoBuffer), "SCENE_STATIC_INFO", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 		{"", "SceneStaticInfo", "staticInfo", false });
 
-	resourceManager.register_resources(std::move(vertexBuffer), "VERTEX_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+	resourceManager.register_resources(std::move(vertexBuffer), "VERTEX_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline,  &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 		{ "Vertex_Block", "vec3", "vertices", true });
 
 	resourceManager.register_resources(std::move(indexBuffer), "INDEX_BUFFER", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline }, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -193,7 +198,7 @@ int main() {
 	resourceManager.register_resources(std::move(accelerationStructure), "ACCELERATION_STRUCTURE", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline }, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
 		{ "", "", "tlas", false});
 
-	resourceManager.register_resources(std::move(skybox_textures), std::move(skybox_samplers), "SKYBOX_TEXTURE_ARRAY", RF_STATIC | RF_BIND_DESCRIPTOR, { &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline, &rtPipeline }, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+	resourceManager.register_resources(std::move(skybox_textures), std::move(skybox_samplers), "SKYBOX_TEXTURE_ARRAY", RF_STATIC | RF_BIND_DESCRIPTOR, { &rtPipeline, &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline}, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 		{ "", "", "skyboxTextures", true });
 
 
@@ -218,7 +223,7 @@ int main() {
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		"RESERVOIR_BUFFER",
 		RF_TEMPORAL | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED,
-		{ &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline, &rtPipeline },
+		{ &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline, &rtPipeline},
 		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 		{ "Reservoir_Buffer", "Reservoir", "reservoirs", true }
 	);
@@ -232,7 +237,7 @@ int main() {
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		"G_BUFFER",
 		RF_TEMPORAL | RF_BIND_DESCRIPTOR | RF_WINDOW_SIZE_RELATED,
-		{ &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline, &rtPipeline },
+		{ &gBufferPipeline, &initializeReservoirPipeline, &temporalReusePipeline, &spatialReusePipeline, &rtPipeline},
 		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 		{ "G_Buffer", "GBufferElement", "gBuffer", true }
 	);
@@ -252,9 +257,10 @@ int main() {
 	initializeReservoirPipeline.register_compute_shader("./shader/reservoir/init_reservoir.comp");
 	temporalReusePipeline.register_compute_shader("./shader/reservoir/temporal_reuse.comp");
 	spatialReusePipeline.register_compute_shader("./shader/reservoir/spatial_reuse.comp");
-
-	// rtPipeline.register_raygen_shader("./shader/rayGen.rgen");
+	
+	rtPipeline.register_raygen_shader("./shader/rayGen.rgen");
 	rtPipeline.register_raygen_shader("./shader/ReSTIR.rgen");
+	rtPipeline.register_raygen_shader("./shader/reservoir/visibility_reuse.rgen");
 	rtPipeline.register_miss_shader("./shader/rayMiss.rmiss");
 	rtPipeline.register_miss_shader("./shader/shadowRayMiss.rmiss");
 	rtPipeline.register_hit_group_shader("./shader/closestHit.rchit", "./shader/alphaTest.rahit");
@@ -262,7 +268,6 @@ int main() {
 
 	toneMappingPipeline.register_compute_shader("./shader/tone_mapping.comp");
 
-	
 	// Build Pipeline
 	gBufferPipeline.build(context, sizeof(PushConstants));
 	initializeReservoirPipeline.build(context, sizeof(ReservoirPushConstants));
@@ -273,9 +278,9 @@ int main() {
 
 
 
-
 	// renderer.offline_render("result.hdr");
 	renderer.realtime_render();
+	// renderer.original_render();
 
 	vkDeviceWaitIdle(context);
 
